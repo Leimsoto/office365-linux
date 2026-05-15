@@ -330,6 +330,64 @@ uninstall_all() {
 }
 
 # ============================================================
+# 9) Reparar cache de fonts wine (cuelgues en dropdown de fonts)
+# ============================================================
+repair_font_cache() {
+  [ -d "$PREFIX" ] || die "Prefix $PREFIX no existe"
+  log "Matando wineserver"
+  WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+
+  log "Borrando font caches en el prefix"
+  rm -rf "$PREFIX/drive_c/users/"*/AppData/Local/Microsoft/Windows/Fonts 2>/dev/null || true
+  rm -rf "$PREFIX/drive_c/users/"*/AppData/Roaming/wine/fontcache 2>/dev/null || true
+
+  log "Borrando fontconfig cache del usuario"
+  rm -rf "$HOME/.cache/fontconfig"
+
+  # Variable fonts son los culpables típicos: wine no parsea VF bien.
+  # Identificarlos y removerlos.
+  log "Buscando Variable Fonts (causa común de cuelgues)"
+  VF_FOUND=()
+  for d in "$FONTDIR_SYS" "$FONTDIR_PREFIX"; do
+    [ -d "$d" ] || continue
+    while IFS= read -r f; do
+      VF_FOUND+=("$f")
+    done < <(find "$d" -maxdepth 1 -iname '*VariableFont*' -o -iname '*VF.ttf' 2>/dev/null)
+  done
+
+  # Aptos.ttf (la base sin sufijo) suele ser la versión variable
+  for d in "$FONTDIR_SYS" "$FONTDIR_PREFIX"; do
+    [ -f "$d/Aptos.ttf" ] && VF_FOUND+=("$d/Aptos.ttf")
+  done
+
+  if [ ${#VF_FOUND[@]} -gt 0 ]; then
+    echo "Variable Fonts detectados (potenciales culpables):"
+    printf '  - %s\n' "${VF_FOUND[@]}"
+    read -r -p "¿Borrarlas? [y/N]: " ans </dev/tty
+    if [[ "$ans" =~ ^[Yy]$ ]]; then
+      for f in "${VF_FOUND[@]}"; do
+        sudo rm -f "$f"
+      done
+      ok "Variable Fonts removidas"
+    fi
+  else
+    log "No se encontraron Variable Fonts"
+  fi
+
+  log "Re-construyendo cache fontconfig"
+  sudo fc-cache -f >/dev/null 2>&1 || true
+  fc-cache -f >/dev/null 2>&1 || true
+
+  log "wineboot -u para re-registrar fonts"
+  LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine" \
+    WINEPREFIX="$PREFIX" /opt/winecx/bin/wine wineboot -u 2>/dev/null || true
+  LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine" \
+    WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+
+  ok "Font cache reparado. Re-lanza Word/Excel."
+}
+
+# ============================================================
 # 8) Re-instalación limpia
 # ============================================================
 reinstall() {
@@ -359,6 +417,7 @@ menu() {
   6) Limpiar cache de descarga
   7) Desinstalar todo
   8) Re-instalación limpia (desinstala + instala)
+  9) Reparar cache de fonts wine (cuelgues en dropdown de fonts)
   q) Salir
 
 EOF
@@ -372,6 +431,7 @@ EOF
     6) clean_cache ;;
     7) uninstall_all ;;
     8) reinstall ;;
+    9) repair_font_cache ;;
     q|Q) exit 0 ;;
     *) warn "Opción inválida" ;;
   esac
@@ -388,7 +448,8 @@ if [ $# -gt 0 ]; then
     6) clean_cache ;;
     7) uninstall_all ;;
     8) reinstall ;;
-    *) die "Opción inválida: $1 (válidas: 1-8)" ;;
+    9) repair_font_cache ;;
+    *) die "Opción inválida: $1 (válidas: 1-9)" ;;
   esac
   exit 0
 fi

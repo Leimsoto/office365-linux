@@ -169,6 +169,7 @@ curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scrip
 | 6 | Limpiar cache de descarga |
 | 7 | Desinstalar todo |
 | 8 | Re-instalación limpia (desinstala + instala) |
+| 9 | Reparar cache de fonts wine (cuelgues en dropdown de fonts) |
 
 ### Atajos manuales
 
