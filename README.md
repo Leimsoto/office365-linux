@@ -16,13 +16,13 @@ Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Out
 ## Instalación rápida (una línea)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash
 ```
 
 Modo no interactivo (CI / scripting):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash -s -- --yes
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash -s -- --yes
 ```
 
 Flags disponibles:
@@ -30,7 +30,7 @@ Flags disponibles:
 | Flag | Descripción |
 |------|-------------|
 | `-y`, `--yes`     | No preguntar, asumir sí |
-| `--keep-cache`    | Mantener archivos descargados en `~/.cache/office365-debian` |
+| `--keep-cache`    | Mantener archivos descargados en `~/.cache/office365-linux` |
 | `--tag=vX.Y.Z`    | Usar un release concreto en lugar del más reciente fijado |
 | `--no-verify`     | Omitir verificación SHA256 (no recomendado) |
 
@@ -71,21 +71,21 @@ Al terminar verás **Word 365**, **Excel 365**, **PowerPoint 365**, **Outlook 36
 
 ```bash
 # 1. Clonar el repo
-git clone https://github.com/Leimsoto/office365-debian.git
-cd office365-debian
+git clone https://github.com/Leimsoto/office365-linux.git
+cd office365-linux
 
 # 2. Lanzar el instalador
 chmod +x install.sh
 ./install.sh
 ```
 
-O bien descargar manualmente los assets del [último release](https://github.com/Leimsoto/office365-debian/releases/latest) a `~/Descargas` y ejecutar:
+O bien descargar manualmente los assets del [último release](https://github.com/Leimsoto/office365-linux/releases/latest) a `~/Descargas` y ejecutar:
 
 ```bash
 cd ~/Descargas
 cat MSO365.zip.part00.bin MSO365.zip.part01.bin > MSO365.zip
 unzip -o MSO365.zip
-bash office365-debian/scripts/instalar-office365-winecx.sh
+bash office365-linux/scripts/instalar-office365-winecx.sh
 ```
 
 ---
@@ -93,7 +93,7 @@ bash office365-debian/scripts/instalar-office365-winecx.sh
 ## Desinstalación
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/scripts/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/uninstall.sh | bash
 ```
 
 O manual:
@@ -104,7 +104,7 @@ sudo rm -rf /opt/winecx
 sudo rm /usr/share/applications/*365.desktop
 sudo rm /usr/share/icons/hicolor/256x256/apps/*365.svg
 sudo apt-get remove --purge winecx
-rm -rf "$HOME/.cache/office365-debian"
+rm -rf "$HOME/.cache/office365-linux"
 ```
 
 ---
@@ -112,7 +112,7 @@ rm -rf "$HOME/.cache/office365-debian"
 ## Estructura del repo
 
 ```
-office365-debian/
+office365-linux/
 ├── install.sh                          # one-liner installer (curl | bash)
 ├── scripts/
 │   ├── instalar-office365-winecx.sh    # instalador principal

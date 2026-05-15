@@ -6,7 +6,7 @@
 #   - Preserva [chaotic-aur] si los archivos de soporte siguen en disco.
 #
 # Uso:
-#   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/scripts/repair-artix-pacman.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/repair-artix-pacman.sh | bash
 
 set -euo pipefail
 
@@ -150,4 +150,4 @@ grep -E '^\[|^Architecture' /etc/pacman.conf
 echo "==============================================="
 echo ""
 echo "Ahora corre el instalador Office 365:"
-echo "  curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash"
+echo "  curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash"

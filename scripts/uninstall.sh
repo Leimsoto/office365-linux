@@ -27,6 +27,6 @@ echo "Si instalaste el paquete winecx con dpkg, removerlo manualmente:"
 echo "  sudo apt-get remove --purge winecx"
 
 echo "Cache del instalador:"
-echo "  rm -rf \"\$HOME/.cache/office365-debian\""
+echo "  rm -rf \"\$HOME/.cache/office365-linux\""
 
 echo "Listo."

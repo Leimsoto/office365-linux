@@ -204,7 +204,7 @@ sudo chmod -R 755 /opt/winecx
 # ---------------------------------------------------------
 # 6) Bundle nettle/gnutls 3.7 (fix ABI break con nettle 4.0 del sistema)
 # ---------------------------------------------------------
-BUNDLE_URL="https://github.com/Leimsoto/office365-debian/releases/download/v1.0.0/arch-winecx-libs.tar.zst"
+BUNDLE_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/arch-winecx-libs.tar.zst"
 BUNDLE_SHA="6d5f93258a8159fc585d6dc0389e4f42fae6e7814da3ff0e4e750a044aefaf5e"
 BUNDLE_TGT="$WORKDIR/arch-winecx-libs.tar.zst"
 

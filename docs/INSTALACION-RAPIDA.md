@@ -4,7 +4,7 @@ Si prefieres no usar el one-liner `curl | bash`, sigue estos pasos.
 
 ## 1. Descargar assets
 
-Desde el [último release](https://github.com/Leimsoto/office365-debian/releases/latest), guarda en `~/Descargas`:
+Desde el [último release](https://github.com/Leimsoto/office365-linux/releases/latest), guarda en `~/Descargas`:
 
 - `MSO365.zip.part00.bin`
 - `MSO365.zip.part01.bin`
@@ -12,7 +12,7 @@ Desde el [último release](https://github.com/Leimsoto/office365-debian/releases
 
 ```bash
 cd ~/Descargas
-BASE="https://github.com/Leimsoto/office365-debian/releases/latest/download"
+BASE="https://github.com/Leimsoto/office365-linux/releases/latest/download"
 curl -fL -O "$BASE/MSO365.zip.part00.bin"
 curl -fL -O "$BASE/MSO365.zip.part01.bin"
 curl -fL -O "$BASE/winecx.deb"
@@ -59,7 +59,7 @@ sudo dpkg -i winecx.deb || sudo apt-get install -f -y
 ## 6. Ejecutar el instalador del repo
 
 ```bash
-curl -fL -O https://raw.githubusercontent.com/Leimsoto/office365-debian/main/scripts/instalar-office365-winecx.sh
+curl -fL -O https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/instalar-office365-winecx.sh
 chmod +x instalar-office365-winecx.sh
 ./instalar-office365-winecx.sh
 ```
@@ -71,5 +71,5 @@ Busca **Word 365**, **Excel 365**, etc. en tu menú de aplicaciones.
 ## Desinstalar
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/scripts/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/uninstall.sh | bash
 ```

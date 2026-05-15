@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # install.sh — Office 365 (WineCX) installer for Debian/Ubuntu AND Arch/Artix
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash -s -- --yes
+#   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash -s -- --yes
 #
 # Flags:
 #   --yes / -y      Non-interactive, assume yes
@@ -16,10 +16,10 @@ IFS=$'\n\t'
 
 # ----- config -----
 REPO_OWNER="Leimsoto"
-REPO_NAME="office365-debian"
+REPO_NAME="office365-linux"
 DEFAULT_TAG="v1.0.0"
 INSTALLER_BRANCH="${OFFICE365_INSTALLER_BRANCH:-main}"
-WORKDIR="${OFFICE365_WORKDIR:-$HOME/.cache/office365-debian}"
+WORKDIR="${OFFICE365_WORKDIR:-$HOME/.cache/office365-linux}"
 ASSETS=(
   "MSO365.zip.part00.bin"
   "MSO365.zip.part01.bin"
@@ -75,7 +75,7 @@ confirm() {
 cat <<'BANNER'
 ==========================================================
    Microsoft Office 365 (WineCX) — Linux installer
-   Repo: https://github.com/Leimsoto/office365-debian
+   Repo: https://github.com/Leimsoto/office365-linux
    License: GPL-3.0
 ==========================================================
 BANNER

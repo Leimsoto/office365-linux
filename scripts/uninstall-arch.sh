@@ -25,7 +25,7 @@ sudo gtk-update-icon-cache /usr/share/icons/hicolor/ || true
 sudo update-desktop-database /usr/share/applications || true
 
 echo "Cache del instalador:"
-echo "  rm -rf \"\$HOME/.cache/office365-debian\""
+echo "  rm -rf \"\$HOME/.cache/office365-linux\""
 
 echo
 echo "Paquetes pacman/AUR instalados como dependencia se conservan."
