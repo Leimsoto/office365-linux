@@ -1,12 +1,14 @@
-# Microsoft Office 365 en Debian / Ubuntu (WineCX)
+# Microsoft Office 365 en Linux (WineCX)
 
-Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Outlook, Access, Publisher) sobre **WineCX** para distribuciones basadas en **Debian / Ubuntu**.
+Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Outlook, Access, Publisher) sobre **WineCX** para distros basadas en **Debian/Ubuntu** y en **Arch/Artix**.
 
 > Inspirado en la guía de [Formateando](https://www.youtube.com/@formateando). Empaquetado y automatizado para la comunidad.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 ![Debian](https://img.shields.io/badge/Debian-based-A81D33?logo=debian)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-supported-E95420?logo=ubuntu)
+![Arch](https://img.shields.io/badge/Arch-supported-1793D1?logo=archlinux)
+![Artix](https://img.shields.io/badge/Artix-supported-10A0CC?logo=artixlinux)
 ![Tested on Debian 13](https://img.shields.io/badge/Tested%20on-Debian%2013%20Trixie-success?logo=debian)
 
 ---
@@ -58,7 +60,7 @@ Al terminar verás **Word 365**, **Excel 365**, **PowerPoint 365**, **Outlook 36
 
 ## Requisitos
 
-- Distro **basada en Debian** o **Ubuntu** (probado en **Debian 13 (Trixie)**, Debian 12, Ubuntu 22.04 / 24.04, Linux Mint, Pop!_OS, MX Linux).
+- Distro **basada en Debian/Ubuntu** o **Arch/Artix** (probado en **Debian 13 Trixie**; soporte experimental en Arch + derivadas: Artix, Manjaro, EndeavourOS, CachyOS, Garuda).
 - **5 GB de espacio libre** (2.3 GB descarga + 2.5 GB instalado).
 - **Arquitectura x86_64** con soporte `multiarch i386`.
 - **Conexión a internet**, `sudo` y `curl`.
@@ -178,6 +180,7 @@ Pull requests bienvenidos. Para cambios grandes, abre primero un issue.
 
 Probado en:
 - **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
+- **Arch / Artix runit** ⚠️ soporte experimental (v1.1.0, en validación)
 - Debian 12 (Bookworm)
 - Ubuntu 22.04 / 24.04 LTS
 - Linux Mint 21 / 22

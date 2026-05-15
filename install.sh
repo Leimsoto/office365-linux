@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Office 365 (WineCX) installer for Debian-based distros
+# install.sh — Office 365 (WineCX) installer for Debian/Ubuntu AND Arch/Artix
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-debian/main/install.sh | bash -s -- --yes
@@ -7,8 +7,9 @@
 # Flags:
 #   --yes / -y      Non-interactive, assume yes
 #   --keep-cache    Don't remove downloaded archives after install
-#   --tag=vX.Y.Z    Pin a specific release tag (default: latest)
+#   --tag=vX.Y.Z    Pin a specific release tag (default: v1.0.0 for assets)
 #   --no-verify     Skip SHA256 verification (NOT recommended)
+#   --family=auto   Force distro family: auto|debian|arch
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -37,14 +38,16 @@ ASSUME_YES=0
 KEEP_CACHE=0
 TAG="$DEFAULT_TAG"
 DO_VERIFY=1
+FAMILY_OVERRIDE="auto"
 for arg in "$@"; do
   case "$arg" in
     -y|--yes)        ASSUME_YES=1 ;;
     --keep-cache)    KEEP_CACHE=1 ;;
     --no-verify)     DO_VERIFY=0 ;;
     --tag=*)         TAG="${arg#--tag=}" ;;
+    --family=*)      FAMILY_OVERRIDE="${arg#--family=}" ;;
     -h|--help)
-      sed -n '2,12p' "$0"
+      sed -n '2,14p' "$0"
       exit 0
       ;;
     *) echo "Unknown arg: $arg" >&2; exit 2 ;;
@@ -68,39 +71,84 @@ confirm() {
   [[ "$ans" =~ ^[Yy]$ ]]
 }
 
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || {
-    log "Instalando dependencia: $1"
-    sudo apt-get install -y "$2" || die "No se pudo instalar $2"
-  }
-}
-
 # ----- banner -----
 cat <<'BANNER'
 ==========================================================
-   Microsoft Office 365 on Debian/Ubuntu (WineCX)
+   Microsoft Office 365 (WineCX) — Linux installer
    Repo: https://github.com/Leimsoto/office365-debian
    License: GPL-3.0
 ==========================================================
 BANNER
 
-# ----- preflight -----
+# ----- preflight: distro family detection -----
 [ "$(id -u)" -ne 0 ] || die "No ejecutes como root. El script usa sudo cuando lo necesita."
 . /etc/os-release 2>/dev/null || die "No se pudo leer /etc/os-release"
-case "${ID_LIKE:-$ID}" in
-  *debian*|*ubuntu*) ok "Distro compatible: $PRETTY_NAME" ;;
-  *) warn "Distro no es Debian-based ($PRETTY_NAME). Continúa bajo tu propio riesgo." ;;
+
+detect_family() {
+  case "$ID" in
+    debian|ubuntu|linuxmint|pop|mx|raspbian|kali|elementary|zorin|deepin|trisquel|parrot)
+      echo "debian"; return ;;
+    arch|manjaro|endeavouros|cachyos|garuda|artix|arcolinux|reborn|chimera)
+      echo "arch"; return ;;
+  esac
+  case "${ID_LIKE:-}" in
+    *debian*|*ubuntu*) echo "debian"; return ;;
+    *arch*)            echo "arch"; return ;;
+  esac
+  echo "unknown"
+}
+
+FAMILY="$FAMILY_OVERRIDE"
+[ "$FAMILY" = "auto" ] && FAMILY="$(detect_family)"
+
+case "$FAMILY" in
+  debian) ok "Distro: $PRETTY_NAME (familia: Debian/Ubuntu)" ;;
+  arch)   ok "Distro: $PRETTY_NAME (familia: Arch/Artix)" ;;
+  *)      die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch." ;;
 esac
 
-if ! confirm "Se descargarán ~2.3 GB de assets y se modificará el sistema (apt, /opt/winecx, /usr/share/applications). ¿Continuar?"; then
+# ----- per-family installer script + size estimate -----
+case "$FAMILY" in
+  debian)
+    INSTALLER_FILE="instalar-office365-winecx.sh"
+    DL_SIZE_MSG="~2.3 GB de assets"
+    SYS_CHANGES="apt, /opt/winecx, /usr/share/applications"
+    ;;
+  arch)
+    INSTALLER_FILE="instalar-office365-winecx-arch.sh"
+    DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls"
+    SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
+    ;;
+esac
+
+if ! confirm "Se descargarán $DL_SIZE_MSG y se modificará el sistema ($SYS_CHANGES). ¿Continuar?"; then
   die "Cancelado por el usuario."
 fi
 
 # ----- ensure tools -----
 sudo -v || die "sudo requerido."
-need_cmd curl curl
-need_cmd unzip unzip
-need_cmd sha256sum coreutils
+
+ensure_cmd_debian() {
+  command -v "$1" >/dev/null 2>&1 || { log "Instalando $2 (apt)"; sudo apt-get install -y "$2" || die "No se pudo instalar $2"; }
+}
+ensure_cmd_arch() {
+  command -v "$1" >/dev/null 2>&1 || { log "Instalando $2 (pacman)"; sudo pacman -S --noconfirm --needed "$2" || die "No se pudo instalar $2"; }
+}
+
+case "$FAMILY" in
+  debian)
+    ensure_cmd_debian curl curl
+    ensure_cmd_debian unzip unzip
+    ensure_cmd_debian sha256sum coreutils
+    ;;
+  arch)
+    ensure_cmd_arch curl curl
+    ensure_cmd_arch unzip unzip
+    ensure_cmd_arch sha256sum coreutils
+    ensure_cmd_arch tar tar
+    ensure_cmd_arch zstd zstd
+    ;;
+esac
 
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
@@ -133,38 +181,37 @@ if [ "$DO_VERIFY" = "1" ]; then
   ok "Verificado MSO365.zip"
 fi
 
-# ----- run installer -----
+# ----- extract + run per-family installer -----
 log "Extrayendo MSO365.zip"
 rm -rf MSO365
 unzip -q -o MSO365.zip
-
-# Place winecx.deb where the installer expects it (alongside the extracted folder content).
 cp -f winecx.deb MSO365/winecx.deb
 
-# Fetch the installer script from the chosen branch (main = latest fixes).
-# Override with OFFICE365_INSTALLER_BRANCH=vX.Y.Z for reproducibility against a tag.
-INSTALLER_RAW="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${INSTALLER_BRANCH}/scripts/instalar-office365-winecx.sh"
+INSTALLER_RAW="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${INSTALLER_BRANCH}/scripts/${INSTALLER_FILE}"
 log "Descargando script principal: $INSTALLER_RAW"
-curl -fL -o instalar-office365-winecx.sh "$INSTALLER_RAW"
-chmod +x instalar-office365-winecx.sh
+curl -fL -o "$INSTALLER_FILE" "$INSTALLER_RAW"
+chmod +x "$INSTALLER_FILE"
 
-# The legacy script expects everything under $HOME/Descargas. Re-locate symlinks.
+# Legacy scripts esperan $HOME/Descargas. Symlinks.
 DESCARGAS="$HOME/Descargas"
 mkdir -p "$DESCARGAS"
-ln -sf "$WORKDIR/MSO365.zip"             "$DESCARGAS/MSO365.zip"
-ln -sf "$WORKDIR/winecx.deb"             "$DESCARGAS/winecx.deb"
-ln -sf "$WORKDIR/MSO365"                 "$DESCARGAS/MSO365"
-ln -sf "$WORKDIR/instalar-office365-winecx.sh" "$DESCARGAS/instalar-office365-winecx.sh"
+ln -sf "$WORKDIR/MSO365.zip"          "$DESCARGAS/MSO365.zip"
+ln -sf "$WORKDIR/winecx.deb"          "$DESCARGAS/winecx.deb"
+ln -sf "$WORKDIR/MSO365"              "$DESCARGAS/MSO365"
+ln -sf "$WORKDIR/$INSTALLER_FILE"     "$DESCARGAS/$INSTALLER_FILE"
 
-log "Ejecutando instalador principal"
-bash "$WORKDIR/instalar-office365-winecx.sh"
+log "Ejecutando instalador principal ($FAMILY)"
+OFFICE365_WORKDIR="$WORKDIR" bash "$WORKDIR/$INSTALLER_FILE"
 
 # ----- cleanup -----
 if [ "$KEEP_CACHE" = "0" ]; then
-  log "Limpiando cache (~2.3 GB). Usa --keep-cache para conservar."
+  log "Limpiando cache. Usa --keep-cache para conservar."
   rm -rf "$WORKDIR/MSO365" "$WORKDIR"/MSO365.zip "$WORKDIR"/MSO365.zip.part*.bin
 fi
 
 ok "Instalación completa. Busca 'Word 365', 'Excel 365', etc. en tu menú de aplicaciones."
 echo
-echo "Para desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash"
+case "$FAMILY" in
+  debian) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
+  arch)   echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
+esac
