@@ -182,7 +182,6 @@ Pull requests bienvenidos. Para cambios grandes, abre primero un issue.
 Probado en:
 - **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
 - **Artix Linux (runit)** ✅ verificado end-to-end (v1.1.0) 
-**[Gagedito](https://github.com/Gagedito)** — QA / testing en Artix Linux (runit)
 - Arch / Manjaro / EndeavourOS / CachyOS / Garuda (compatible vía router, mismo path Arch)
 - Debian 12 (Bookworm)
 - Ubuntu 22.04 / 24.04 LTS
@@ -196,4 +195,4 @@ Probado en:
 
 - **[Leimar Soto](https://github.com/Leimsoto)** — Desarrollador principal · QA / testing en Debian 13 Trixie
 <!-- contribuidores-extra -->
-
+**[Gage](https://github.com/Gagedito)** — QA / testing en Artix Linux (runit)
