@@ -7,6 +7,7 @@ Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Out
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 ![Debian](https://img.shields.io/badge/Debian-based-A81D33?logo=debian)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-supported-E95420?logo=ubuntu)
+![Tested on Debian 13](https://img.shields.io/badge/Tested%20on-Debian%2013%20Trixie-success?logo=debian)
 
 ---
 
@@ -57,7 +58,7 @@ Al terminar verás **Word 365**, **Excel 365**, **PowerPoint 365**, **Outlook 36
 
 ## Requisitos
 
-- Distro **basada en Debian** o **Ubuntu** (probado en Debian 12, Ubuntu 22.04 / 24.04, Linux Mint, Pop!_OS, MX Linux).
+- Distro **basada en Debian** o **Ubuntu** (probado en **Debian 13 (Trixie)**, Debian 12, Ubuntu 22.04 / 24.04, Linux Mint, Pop!_OS, MX Linux).
 - **5 GB de espacio libre** (2.3 GB descarga + 2.5 GB instalado).
 - **Arquitectura x86_64** con soporte `multiarch i386`.
 - **Conexión a internet**, `sudo` y `curl`.
@@ -176,6 +177,7 @@ WineCX es una compilación derivada del proyecto Wine / CrossOver; los créditos
 Pull requests bienvenidos. Para cambios grandes, abre primero un issue.
 
 Probado en:
+- **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
 - Debian 12 (Bookworm)
 - Ubuntu 22.04 / 24.04 LTS
 - Linux Mint 21 / 22
