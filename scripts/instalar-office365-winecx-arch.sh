@@ -139,6 +139,13 @@ sudo pacman -S --noconfirm --needed \
   lib32-alsa-lib lib32-libpulse \
   cabextract \
   fontconfig xdg-utils
+# Deps 32-bit que libgnutls/libnettle bundled de WineCX cargan en runtime.
+# Sin éstas: 'err:winediag:gnutls_process_attach failed to load libgnutls,
+# no support for encryption' y Office se queda colgado al abrir.
+sudo pacman -S --noconfirm --needed \
+  lib32-libtasn1 lib32-libidn2 lib32-p11-kit lib32-gmp lib32-libunistring \
+  lib32-libnghttp2 lib32-libgpg-error lib32-libgcrypt \
+  || echo "[WARN] Algunas deps lib32-gnutls fallaron (revisa multilib)"
 
 # Impresión (opcional, no rompe si falla)
 sudo pacman -S --noconfirm --needed cups cups-filters system-config-printer 2>/dev/null || true
