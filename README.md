@@ -143,6 +143,34 @@ Los hashes SHA256 están embebidos en `install.sh` y se verifican automáticamen
 
 ## Solución de problemas
 
+### Menú interactivo `fixes.sh`
+
+Para todo: reparar pacman.conf en Artix, instalar fonts extra, matar procesos
+colgados, re-inicializar prefix, verificar estado, limpiar cache, reinstalar.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/fixes.sh | bash
+```
+
+Modo directo (sin menú, ejecuta la opción y sale):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/fixes.sh | bash -s -- 2
+```
+
+| Opción | Acción |
+|---|---|
+| 1 | Reparar `/etc/pacman.conf` (solo Artix) |
+| 2 | Instalar fonts extra (Aptos, Cascadia, Selawik, Carlito, Liberation, Noto CJK…) |
+| 3 | Matar procesos Office/Wine colgados |
+| 4 | Re-inicializar prefix wine (`wineboot -u`) |
+| 5 | Verificar estado instalación |
+| 6 | Limpiar cache de descarga |
+| 7 | Desinstalar todo |
+| 8 | Re-instalación limpia (desinstala + instala) |
+
+### Atajos manuales
+
 **Word / Excel no abre**
 ```bash
 WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wineserver -k
@@ -151,7 +179,8 @@ WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wineserver -k
 
 **Fuentes faltantes**
 ```bash
-WINEPREFIX="$HOME/.Microsoft_Office_365" winetricks -q corefonts tahoma
+# Vía fixes.sh (recomendado)
+curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/fixes.sh | bash -s -- 2
 ```
 
 **`dpkg: error: package architecture (i386) does not match`**
