@@ -10,6 +10,7 @@ Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Out
 ![Arch](https://img.shields.io/badge/Arch-supported-1793D1?logo=archlinux)
 ![Artix](https://img.shields.io/badge/Artix-supported-10A0CC?logo=artixlinux)
 ![Tested on Debian 13](https://img.shields.io/badge/Tested%20on-Debian%2013%20Trixie-success?logo=debian)
+![Tested on Artix](https://img.shields.io/badge/Tested%20on-Artix%20runit-success?logo=artixlinux)
 
 ---
 
@@ -60,7 +61,7 @@ Al terminar verás **Word 365**, **Excel 365**, **PowerPoint 365**, **Outlook 36
 
 ## Requisitos
 
-- Distro **basada en Debian/Ubuntu** o **Arch/Artix** (probado en **Debian 13 Trixie**; soporte experimental en Arch + derivadas: Artix, Manjaro, EndeavourOS, CachyOS, Garuda).
+- Distro **basada en Debian/Ubuntu** o **Arch/Artix** (probado en **Debian 13 Trixie** y **Artix Linux runit**; compatible con derivadas Arch: Manjaro, EndeavourOS, CachyOS, Garuda, ArcoLinux).
 - **5 GB de espacio libre** (2.3 GB descarga + 2.5 GB instalado).
 - **Arquitectura x86_64** con soporte `multiarch i386`.
 - **Conexión a internet**, `sudo` y `curl`.
@@ -180,7 +181,8 @@ Pull requests bienvenidos. Para cambios grandes, abre primero un issue.
 
 Probado en:
 - **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
-- **Arch / Artix runit** ⚠️ soporte experimental (v1.1.0, en validación)
+- **Artix Linux (runit)** ✅ verificado end-to-end (v1.1.0)
+- Arch / Manjaro / EndeavourOS / CachyOS / Garuda (compatible vía router, mismo path Arch)
 - Debian 12 (Bookworm)
 - Ubuntu 22.04 / 24.04 LTS
 - Linux Mint 21 / 22
