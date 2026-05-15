@@ -225,6 +225,5 @@ Probado en:
 ## Contribuidores
 
 - **[Leimar Soto](https://github.com/Leimsoto)** — Desarrollador principal · QA / testing en Debian 13 Trixie
-<!-- contribuidores-extra -->
 - **[Gage](https://github.com/Gagedito)** — QA / testing en Artix Linux (runit)
 - **[srwangcr](https://github.com/srwangcr)** — QA / testing en Cachy OS
