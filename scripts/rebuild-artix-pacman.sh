@@ -77,9 +77,31 @@ Include = /etc/pacman.d/mirrorlist-arch
 Include = /etc/pacman.d/mirrorlist-arch
 EOF
 
+# Restaurar [chaotic-aur] si los archivos de soporte siguen presentes
+if [ -f /etc/pacman.d/chaotic-mirrorlist ]; then
+  echo ">> Detectado chaotic-mirrorlist; restaurando [chaotic-aur]"
+  sudo tee -a /etc/pacman.conf >/dev/null <<'EOF'
+
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+EOF
+  # Verificar keyring; si falta, reinstalar
+  if ! sudo pacman-key --list-keys 3056513887B78AEB >/dev/null 2>&1; then
+    echo ">> Recuperando keyring chaotic-aur"
+    sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com || true
+    sudo pacman-key --lsign-key 3056513887B78AEB || true
+    sudo pacman -U --noconfirm \
+      'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' \
+      'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' || true
+  fi
+else
+  echo ">> chaotic-aur no detectado (no se encontró /etc/pacman.d/chaotic-mirrorlist). Skip."
+fi
+
 # Limpiar cache stale
 sudo rm -f /var/lib/pacman/sync/multilib.db /var/lib/pacman/sync/extra.db
 sudo rm -f /var/lib/pacman/sync/multilib.db.sig /var/lib/pacman/sync/extra.db.sig
+sudo rm -f /var/lib/pacman/sync/chaotic-aur.db /var/lib/pacman/sync/chaotic-aur.db.sig
 
 echo ">> Refrescando repos completos"
 sudo pacman -Syy --noconfirm
