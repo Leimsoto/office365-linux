@@ -188,3 +188,11 @@ Probado en:
 - Linux Mint 21 / 22
 - Pop!_OS 22.04
 - MX Linux 23
+
+---
+
+## Contribuidores
+
+- **[Leimar Soto](https://github.com/Leimsoto)** — Desarrollador principal · QA / testing en Debian 13 Trixie
+<!-- contribuidores-extra -->
+
