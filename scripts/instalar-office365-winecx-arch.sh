@@ -44,33 +44,75 @@ fi
 cd "$WORKDIR/MSO365"
 
 # ---------------------------------------------------------
-# 2) Multilib en pacman.conf (idempotente)
+# 2) Multilib en pacman.conf (idempotente, distingue Artix vs Arch)
 # ---------------------------------------------------------
 echo ">> Habilitando multilib y repos extra"
-if ! grep -qE '^\[multilib\]' /etc/pacman.conf; then
-  if grep -qE '^#\[multilib\]' /etc/pacman.conf; then
-    sudo sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/{s/^#//}' /etc/pacman.conf
-  else
+
+# Backup único de pacman.conf
+[ -f /etc/pacman.conf.office365-bak ] || sudo cp /etc/pacman.conf /etc/pacman.conf.office365-bak
+
+if [ "$ID" = "artix" ]; then
+  # Artix: multilib y extra viven en repos de Arch, NO en mirrorlist Artix.
+  # Requiere artix-archlinux-support + mirrorlist-arch.
+  sudo pacman -S --noconfirm --needed artix-archlinux-support || true
+
+  # Detectar bloques [multilib]/[extra] mal configurados (apuntando a mirrorlist Artix)
+  # y removerlos en bloque junto con sus directivas siguientes hasta el próximo [seccion].
+  if grep -qE '^\[multilib\]' /etc/pacman.conf || grep -qE '^\[extra\]' /etc/pacman.conf; then
+    NEEDS_REWRITE=0
+    if grep -qE '^\[multilib\]' /etc/pacman.conf && \
+       ! awk '/^\[multilib\]/,/^\[/{if($0 ~ /mirrorlist-arch/) print}' /etc/pacman.conf | grep -q mirrorlist-arch; then
+      NEEDS_REWRITE=1
+    fi
+    if grep -qE '^\[extra\]' /etc/pacman.conf && \
+       ! awk '/^\[extra\]/,/^\[/{if($0 ~ /mirrorlist-arch/) print}' /etc/pacman.conf | grep -q mirrorlist-arch; then
+      NEEDS_REWRITE=1
+    fi
+    if [ "$NEEDS_REWRITE" = "1" ]; then
+      echo ">> Reparando bloques [multilib]/[extra] mal configurados"
+      sudo awk '
+        BEGIN { skip = 0 }
+        /^\[multilib\]/ { skip = 1; next }
+        /^\[extra\]/    { skip = 1; next }
+        /^\[/           { skip = 0 }
+        !skip           { print }
+      ' /etc/pacman.conf > /tmp/pacman.conf.new
+      sudo mv /tmp/pacman.conf.new /etc/pacman.conf
+    fi
+  fi
+
+  # Añadir bloques correctos si faltan
+  if ! grep -qE '^\[extra\]' /etc/pacman.conf; then
     sudo tee -a /etc/pacman.conf >/dev/null <<'EOF'
+
+[extra]
+Include = /etc/pacman.d/mirrorlist-arch
+EOF
+  fi
+  if ! grep -qE '^\[multilib\]' /etc/pacman.conf; then
+    sudo tee -a /etc/pacman.conf >/dev/null <<'EOF'
+
+[multilib]
+Include = /etc/pacman.d/mirrorlist-arch
+EOF
+  fi
+else
+  # Arch vanilla / Manjaro / EndeavourOS / CachyOS / Garuda / ArcoLinux
+  if ! grep -qE '^\[multilib\]' /etc/pacman.conf; then
+    if grep -qE '^#\[multilib\]' /etc/pacman.conf; then
+      sudo sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/{s/^#//}' /etc/pacman.conf
+    else
+      sudo tee -a /etc/pacman.conf >/dev/null <<'EOF'
 
 [multilib]
 Include = /etc/pacman.d/mirrorlist
 EOF
+    fi
   fi
 fi
 
-# En Artix: agregar repo [extra] de Arch vía artix-archlinux-support si falta
-if [ "$ID" = "artix" ] && ! grep -qE '^\[extra\]' /etc/pacman.conf; then
-  sudo pacman -S --noconfirm --needed artix-archlinux-support
-  sudo tee -a /etc/pacman.conf >/dev/null <<'EOF'
-
-[extra]
-Include = /etc/pacman.d/mirrorlist-arch
-
-[multilib]
-Include = /etc/pacman.d/mirrorlist-arch
-EOF
-fi
+# Limpiar DBs viejas que pudieron quedar registradas con paths rotos
+sudo rm -f /var/lib/pacman/sync/multilib.db /var/lib/pacman/sync/extra.db 2>/dev/null || true
 
 sudo pacman -Sy --noconfirm
 
