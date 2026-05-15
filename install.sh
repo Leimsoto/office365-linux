@@ -9,7 +9,7 @@
 #   --keep-cache    Don't remove downloaded archives after install
 #   --tag=vX.Y.Z    Pin a specific release tag (default: v1.0.0 for assets)
 #   --no-verify     Skip SHA256 verification (NOT recommended)
-#   --family=auto   Force distro family: auto|debian|arch
+#   --family=auto   Force distro family: auto|debian|arch|fedora
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -90,10 +90,13 @@ detect_family() {
       echo "debian"; return ;;
     arch|manjaro|endeavouros|cachyos|garuda|artix|arcolinux|reborn|chimera)
       echo "arch"; return ;;
+    fedora|rhel|rocky|almalinux|centos|nobara|ultramarine|bazzite|silverblue|kinoite)
+      echo "fedora"; return ;;
   esac
   case "${ID_LIKE:-}" in
     *debian*|*ubuntu*) echo "debian"; return ;;
     *arch*)            echo "arch"; return ;;
+    *fedora*|*rhel*)   echo "fedora"; return ;;
   esac
   echo "unknown"
 }
@@ -104,7 +107,8 @@ FAMILY="$FAMILY_OVERRIDE"
 case "$FAMILY" in
   debian) ok "Distro: $PRETTY_NAME (familia: Debian/Ubuntu)" ;;
   arch)   ok "Distro: $PRETTY_NAME (familia: Arch/Artix)" ;;
-  *)      die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch." ;;
+  fedora) ok "Distro: $PRETTY_NAME (familia: Fedora/RHEL)" ;;
+  *)      die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|fedora." ;;
 esac
 
 # ----- per-family installer script + size estimate -----
@@ -118,6 +122,11 @@ case "$FAMILY" in
     INSTALLER_FILE="instalar-office365-winecx-arch.sh"
     DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls"
     SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
+    ;;
+  fedora)
+    INSTALLER_FILE="instalar-office365-winecx-fedora.sh"
+    DL_SIZE_MSG="~2.3 GB de assets + ~432 MB WineCX Fedora"
+    SYS_CHANGES="dnf, /opt/winecx, /usr/share/applications, RPM Fusion"
     ;;
 esac
 
@@ -134,6 +143,9 @@ ensure_cmd_debian() {
 ensure_cmd_arch() {
   command -v "$1" >/dev/null 2>&1 || { log "Instalando $2 (pacman)"; sudo pacman -S --noconfirm --needed "$2" || die "No se pudo instalar $2"; }
 }
+ensure_cmd_fedora() {
+  command -v "$1" >/dev/null 2>&1 || { log "Instalando $2 (dnf)"; sudo dnf install -y "$2" || die "No se pudo instalar $2"; }
+}
 
 case "$FAMILY" in
   debian)
@@ -147,6 +159,11 @@ case "$FAMILY" in
     ensure_cmd_arch sha256sum coreutils
     ensure_cmd_arch tar tar
     ensure_cmd_arch zstd zstd
+    ;;
+  fedora)
+    ensure_cmd_fedora curl curl
+    ensure_cmd_fedora unzip unzip
+    ensure_cmd_fedora sha256sum coreutils
     ;;
 esac
 
@@ -214,4 +231,5 @@ echo
 case "$FAMILY" in
   debian) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
   arch)   echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
+  fedora) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-fedora.sh | bash" ;;
 esac

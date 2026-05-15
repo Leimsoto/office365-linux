@@ -1,6 +1,6 @@
 # Microsoft Office 365 en Linux (WineCX)
 
-Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Outlook, Access, Publisher) sobre **WineCX** para distros basadas en **Debian/Ubuntu** y en **Arch/Artix**.
+Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Outlook, Access, Publisher) sobre **WineCX** para distros basadas en **Debian/Ubuntu**, **Arch/Artix** y **Fedora/RHEL**.
 
 > Inspirado en la guía de [Formateando](https://www.youtube.com/@formateando). Empaquetado y automatizado para la comunidad.
 
@@ -9,6 +9,7 @@ Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Out
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-supported-E95420?logo=ubuntu)
 ![Arch](https://img.shields.io/badge/Arch-supported-1793D1?logo=archlinux)
 ![Artix](https://img.shields.io/badge/Artix-supported-10A0CC?logo=artixlinux)
+![Fedora](https://img.shields.io/badge/Fedora-supported-294172?logo=fedora)
 ![Tested on Debian 13](https://img.shields.io/badge/Tested%20on-Debian%2013%20Trixie-success?logo=debian)
 ![Tested on Artix](https://img.shields.io/badge/Tested%20on-Artix%20runit-success?logo=artixlinux)
 ![Tested on CachyOS](https://img.shields.io/badge/Tested%20on-CachyOS-success?logo=archlinux)
@@ -62,7 +63,7 @@ Al terminar verás **Word 365**, **Excel 365**, **PowerPoint 365**, **Outlook 36
 
 ## Requisitos
 
-- Distro **basada en Debian/Ubuntu** o **Arch/Artix** (probado en **Debian 13 Trixie** y **Artix Linux runit**; compatible con derivadas Arch: Manjaro, EndeavourOS, CachyOS, Garuda, ArcoLinux).
+- Distro **basada en Debian/Ubuntu**, **Arch/Artix** o **Fedora/RHEL** (probado en Debian 13 Trixie, Artix Linux runit, CachyOS; compatible con Manjaro, EndeavourOS, Garuda, ArcoLinux, Fedora 41+, RHEL 9+, Rocky, AlmaLinux, Nobara, Ultramarine, Bazzite).
 - **5 GB de espacio libre** (2.3 GB descarga + 2.5 GB instalado).
 - **Arquitectura x86_64** con soporte `multiarch i386`.
 - **Conexión a internet**, `sudo` y `curl`.
@@ -214,7 +215,9 @@ Probado en:
 - **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
 - **Artix Linux (runit)** ✅ verificado end-to-end (v1.1.0)
 - **CachyOS** ✅ verificado end-to-end (v1.1.0)
+- **Fedora** ⚠️ soporte experimental (v1.2.0, en validación)
 - Arch / Manjaro / EndeavourOS / Garuda (compatible vía router, mismo path Arch)
+- RHEL / Rocky / AlmaLinux / Nobara / Ultramarine / Bazzite (compatible vía router, mismo path Fedora)
 - Debian 12 (Bookworm)
 - Ubuntu 22.04 / 24.04 LTS
 - Linux Mint 21 / 22
