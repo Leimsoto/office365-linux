@@ -1,0 +1,18 @@
+# Build artifacts
+release-assets/
+*.zip
+*.deb
+*.bin
+MSO365/
+.Microsoft_Office_365/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log
