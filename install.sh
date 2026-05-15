@@ -17,6 +17,7 @@ IFS=$'\n\t'
 REPO_OWNER="Leimsoto"
 REPO_NAME="office365-debian"
 DEFAULT_TAG="v1.0.0"
+INSTALLER_BRANCH="${OFFICE365_INSTALLER_BRANCH:-main}"
 WORKDIR="${OFFICE365_WORKDIR:-$HOME/.cache/office365-debian}"
 ASSETS=(
   "MSO365.zip.part00.bin"
@@ -140,8 +141,9 @@ unzip -q -o MSO365.zip
 # Place winecx.deb where the installer expects it (alongside the extracted folder content).
 cp -f winecx.deb MSO365/winecx.deb
 
-# Fetch the installer script from the repo at the same tag for reproducibility.
-INSTALLER_RAW="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${TAG}/scripts/instalar-office365-winecx.sh"
+# Fetch the installer script from the chosen branch (main = latest fixes).
+# Override with OFFICE365_INSTALLER_BRANCH=vX.Y.Z for reproducibility against a tag.
+INSTALLER_RAW="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${INSTALLER_BRANCH}/scripts/instalar-office365-winecx.sh"
 log "Descargando script principal: $INSTALLER_RAW"
 curl -fL -o instalar-office365-winecx.sh "$INSTALLER_RAW"
 chmod +x instalar-office365-winecx.sh

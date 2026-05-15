@@ -27,9 +27,27 @@ fi
 cd "$WORKDIR/MSO365"
 
 # ---------------------------------------------------------
-# 3) Habilitar arquitectura i386
+# 3) Habilitar arquitectura i386 + repos contrib/non-free
 # ---------------------------------------------------------
 sudo dpkg --add-architecture i386
+
+# Activar contrib y non-free si no están. ttf-mscorefonts-installer vive en contrib.
+# Debian 12+ usa .sources (deb822); Debian 11 y derivados aún usan sources.list clásico.
+ACTIVATED_REPOS=0
+if [ -d /etc/apt/sources.list.d ] && ls /etc/apt/sources.list.d/*.sources >/dev/null 2>&1; then
+  for f in /etc/apt/sources.list.d/*.sources; do
+    if grep -q "^Components:" "$f" && ! grep -q "contrib" "$f"; then
+      sudo sed -i 's/^\(Components:.*\)$/\1 contrib non-free non-free-firmware/' "$f"
+      ACTIVATED_REPOS=1
+    fi
+  done
+fi
+if [ -f /etc/apt/sources.list ] && ! grep -qE '\bcontrib\b' /etc/apt/sources.list; then
+  sudo sed -i 's/main$/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
+  ACTIVATED_REPOS=1
+fi
+[ "$ACTIVATED_REPOS" = "1" ] && echo ">> Activado contrib / non-free / non-free-firmware"
+
 sudo apt-get update
 
 # ---------------------------------------------------------
@@ -108,7 +126,7 @@ EOF
 }
 
 create_desktop() {
-  local name="$1" display="$2" comment="$3" icon="$4" categories="$5" mimetypes="$6"
+  local name="$1" display="$2" comment="$3" icon="$4" categories="$5" mimetypes="$6" wmclass="$7"
   sudo tee "/usr/share/applications/${name}.desktop" > /dev/null <<EOF
 [Desktop Entry]
 Name=${display}
@@ -116,6 +134,7 @@ Comment=${comment}
 Exec=/opt/winecx/launchers/${name}.sh %F
 Type=Application
 StartupNotify=true
+StartupWMClass=${wmclass}
 Terminal=false
 Icon=${icon}
 Categories=${categories}
@@ -129,37 +148,72 @@ EOF
 create_launcher "word365" "WINWORD.EXE"
 create_desktop  "word365" "Microsoft Word 365" "Procesador de textos de Microsoft Office 365" "Word365" \
   "Office;WordProcessor;" \
-  "application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.ms-word.document.macroEnabled.12;application/rtf;text/plain;"
+  "application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.ms-word.document.macroEnabled.12;application/rtf;text/plain;" \
+  "winword.exe"
 
 create_launcher "excel365" "EXCEL.EXE"
 create_desktop  "excel365" "Microsoft Excel 365" "Hoja de cálculo de Microsoft Office 365" "Excel365" \
   "Office;Spreadsheet;" \
-  "application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.ms-excel.sheet.macroEnabled.12;text/csv;"
+  "application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.ms-excel.sheet.macroEnabled.12;text/csv;" \
+  "excel.exe"
 
 create_launcher "powerpoint365" "POWERPNT.EXE"
 create_desktop  "powerpoint365" "Microsoft PowerPoint 365" "Presentaciones de Microsoft Office 365" "Powerpoint365" \
   "Office;Presentation;" \
-  "application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.ms-powerpoint.presentation.macroEnabled.12;"
+  "application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.ms-powerpoint.presentation.macroEnabled.12;" \
+  "powerpnt.exe"
 
 create_launcher "outlook365" "OUTLOOK.EXE"
 create_desktop  "outlook365" "Microsoft Outlook 365" "Cliente de correo de Microsoft Office 365" "Outlook365" \
   "Office;Email;" \
-  "application/vnd.ms-outlook;application/mbox;message/rfc822;"
+  "application/vnd.ms-outlook;application/mbox;message/rfc822;" \
+  "outlook.exe"
 
 create_launcher "access365" "MSACCESS.EXE"
 create_desktop  "access365" "Microsoft Access 365" "Base de datos de Microsoft Office 365" "Access365" \
   "Office;Database;" \
-  "application/vnd.ms-access;application/x-msaccess;"
+  "application/vnd.ms-access;application/x-msaccess;" \
+  "msaccess.exe"
 
 create_launcher "publisher365" "MSPUB.EXE"
 create_desktop  "publisher365" "Microsoft Publisher 365" "Publicaciones de Microsoft Office 365" "Publisher365" \
   "Office;Publishing;" \
-  "application/x-mspublisher;"
+  "application/x-mspublisher;" \
+  "mspub.exe"
 
 # ---------------------------------------------------------
-# 11) Refrescar base de datos de aplicaciones
+# 11) Refrescar base de datos de aplicaciones + asociaciones MIME
 # ---------------------------------------------------------
 sudo update-desktop-database /usr/share/applications || true
+
+# Asociar tipos de archivo a los lanzadores (doble-click abre la app correcta)
+if command -v xdg-mime >/dev/null 2>&1; then
+  xdg-mime default word365.desktop \
+    application/msword \
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document \
+    application/vnd.ms-word.document.macroEnabled.12 \
+    application/rtf 2>/dev/null || true
+
+  xdg-mime default excel365.desktop \
+    application/vnd.ms-excel \
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet \
+    application/vnd.ms-excel.sheet.macroEnabled.12 \
+    text/csv 2>/dev/null || true
+
+  xdg-mime default powerpoint365.desktop \
+    application/vnd.ms-powerpoint \
+    application/vnd.openxmlformats-officedocument.presentationml.presentation \
+    application/vnd.ms-powerpoint.presentation.macroEnabled.12 2>/dev/null || true
+
+  xdg-mime default outlook365.desktop \
+    application/vnd.ms-outlook message/rfc822 2>/dev/null || true
+
+  xdg-mime default access365.desktop \
+    application/vnd.ms-access application/x-msaccess 2>/dev/null || true
+
+  xdg-mime default publisher365.desktop \
+    application/x-mspublisher 2>/dev/null || true
+fi
 
 # ---------------------------------------------------------
 # 12) Permisos del prefix
@@ -191,19 +245,27 @@ mkdir -p "$HOME/.Microsoft_Office_365/drive_c/users/crossover/AppData/Roaming"
 WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wine wineboot -u || true
 
 # ---------------------------------------------------------
-# 16) Cerrar wineserver limpio
+# 16) Cerrar wineserver limpio (wineboot -e termina apps, luego -k mata server)
 # ---------------------------------------------------------
+WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wine wineboot -e || true
 WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wineserver -k || true
 WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wineserver -w || true
 
 # ---------------------------------------------------------
-# 17) Copiar fuentes de Office
+# 17) Copiar fuentes de Office (a prefix Y a /usr/share/fonts/Windows)
 # ---------------------------------------------------------
 mkdir -p "$HOME/.Microsoft_Office_365/drive_c/windows/Fonts"
 if [ -d "$WORKDIR/MSO365/Fuentes Office365" ]; then
   cp "$WORKDIR/MSO365/Fuentes Office365"/*.ttf "$HOME/.Microsoft_Office_365/drive_c/windows/Fonts/" 2>/dev/null || true
   cp "$WORKDIR/MSO365/Fuentes Office365"/*.TTF "$HOME/.Microsoft_Office_365/drive_c/windows/Fonts/" 2>/dev/null || true
   cp "$WORKDIR/MSO365/Fuentes Office365"/*.ttc "$HOME/.Microsoft_Office_365/drive_c/windows/Fonts/" 2>/dev/null || true
+
+  # Instalar también a nivel de sistema para LibreOffice/Inkscape/etc.
+  sudo mkdir -p /usr/share/fonts/Windows
+  sudo cp "$WORKDIR/MSO365/Fuentes Office365"/*.ttf /usr/share/fonts/Windows/ 2>/dev/null || true
+  sudo cp "$WORKDIR/MSO365/Fuentes Office365"/*.TTF /usr/share/fonts/Windows/ 2>/dev/null || true
+  sudo cp "$WORKDIR/MSO365/Fuentes Office365"/*.ttc /usr/share/fonts/Windows/ 2>/dev/null || true
+  sudo fc-cache -f /usr/share/fonts/Windows >/dev/null 2>&1 || true
 fi
 
 # ---------------------------------------------------------

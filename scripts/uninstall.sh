@@ -18,6 +18,8 @@ sudo rm -f  /usr/share/icons/hicolor/256x256/apps/Word365.svg \
             /usr/share/icons/hicolor/256x256/apps/Outlook365.svg \
             /usr/share/icons/hicolor/256x256/apps/Access365.svg \
             /usr/share/icons/hicolor/256x256/apps/Publisher365.svg
+sudo rm -rf /usr/share/fonts/Windows
+sudo fc-cache -f >/dev/null 2>&1 || true
 sudo gtk-update-icon-cache /usr/share/icons/hicolor/ || true
 sudo update-desktop-database /usr/share/applications || true
 
