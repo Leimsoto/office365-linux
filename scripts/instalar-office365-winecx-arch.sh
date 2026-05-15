@@ -128,7 +128,7 @@ sudo pacman -Sy --noconfirm
 # ---------------------------------------------------------
 # 3) Dependencias base
 # ---------------------------------------------------------
-echo ">> Instalando dependencias base"
+echo ">> Instalando dependencias base (críticas)"
 sudo pacman -S --noconfirm --needed \
   base-devel git wget curl pkgconf gettext unzip zstd patchelf \
   clang lld \
@@ -136,9 +136,16 @@ sudo pacman -S --noconfirm --needed \
   wine winetricks \
   lib32-glibc lib32-gcc-libs lib32-freetype2 \
   lib32-libx11 lib32-libxext lib32-libxrender lib32-libxrandr lib32-libxxf86vm \
-  lib32-alsa-lib lib32-libpulse \
   cabextract \
   fontconfig xdg-utils
+
+# Deps audio opcionales (Office funciona sin ellas; mirrors CachyOS suelen
+# servir 404 en builds específicos de lib32-libpulse/lib32-libasyncns).
+sudo pacman -S --noconfirm --needed lib32-alsa-lib 2>&1 | tail -3 || \
+  echo "[WARN] lib32-alsa-lib no instalable, Office seguirá sin audio ALSA 32-bit"
+sudo pacman -S --noconfirm --needed lib32-libpulse 2>&1 | tail -3 || \
+  echo "[WARN] lib32-libpulse no instalable (mirror desync), Office seguirá sin audio PulseAudio 32-bit"
+
 # Deps 32-bit que libgnutls/libnettle bundled de WineCX cargan en runtime.
 # Sin éstas: 'err:winediag:gnutls_process_attach failed to load libgnutls,
 # no support for encryption' y Office se queda colgado al abrir.
