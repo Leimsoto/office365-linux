@@ -29,8 +29,19 @@ TS=$(date +%Y%m%d-%H%M%S)
 sudo cp /etc/pacman.conf "/etc/pacman.conf.bak-$TS"
 echo ">> Backup: /etc/pacman.conf.bak-$TS"
 
-# Asegurar artix-archlinux-support (provee mirrorlist-arch)
-sudo pacman -Sy --noconfirm 2>/dev/null || true
+# Asegurar Architecture definida en [options] (mirrorlist-arch usa $arch)
+if grep -qE '^Architecture\s*=' /etc/pacman.conf; then
+  echo ">> Architecture ya definida"
+elif grep -qE '^#\s*Architecture\s*=' /etc/pacman.conf; then
+  echo ">> Descomentando Architecture en [options]"
+  sudo sed -i 's/^#\s*\(Architecture\s*=.*\)/\1/' /etc/pacman.conf
+else
+  echo ">> Añadiendo Architecture = auto a [options]"
+  sudo sed -i '/^\[options\]/a Architecture = auto' /etc/pacman.conf
+fi
+
+# Asegurar artix-archlinux-support (provee mirrorlist-arch). Solo Artix native repos.
+sudo pacman -Sy --noconfirm system world 2>/dev/null || true
 sudo pacman -S --noconfirm --needed artix-archlinux-support || true
 
 # Stripear bloques [multilib] y [extra] existentes (puede haber duplicados o rotos)

@@ -51,6 +51,15 @@ echo ">> Habilitando multilib y repos extra"
 # Backup único de pacman.conf
 [ -f /etc/pacman.conf.office365-bak ] || sudo cp /etc/pacman.conf /etc/pacman.conf.office365-bak
 
+# Asegurar Architecture en [options]. mirrorlist-arch usa $arch.
+if ! grep -qE '^Architecture\s*=' /etc/pacman.conf; then
+  if grep -qE '^#\s*Architecture\s*=' /etc/pacman.conf; then
+    sudo sed -i 's/^#\s*\(Architecture\s*=.*\)/\1/' /etc/pacman.conf
+  else
+    sudo sed -i '/^\[options\]/a Architecture = auto' /etc/pacman.conf
+  fi
+fi
+
 if [ "$ID" = "artix" ]; then
   # Artix: multilib y extra viven en repos de Arch, NO en mirrorlist Artix.
   # Requiere artix-archlinux-support + mirrorlist-arch.
