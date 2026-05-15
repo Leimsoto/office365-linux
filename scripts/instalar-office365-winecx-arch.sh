@@ -136,8 +136,21 @@ sudo pacman -S --noconfirm --needed \
   wine winetricks \
   lib32-glibc lib32-gcc-libs lib32-freetype2 \
   lib32-libx11 lib32-libxext lib32-libxrender lib32-libxrandr lib32-libxxf86vm \
+  lib32-mesa lib32-libdrm \
   cabextract \
   fontconfig xdg-utils
+
+# Vulkan/OpenGL 32-bit ICD según GPU detectada. Sin esto, wine32 no renderiza
+# (ventana sale transparente en KDE Plasma 6 Wayland, GNOME, etc.).
+echo ">> Detectando GPU para vulkan ICD 32-bit"
+GPU_VENDOR=$(lspci | grep -iE "VGA|3D" | head -1 | grep -ioE "NVIDIA|AMD|Intel" | head -1 || echo "unknown")
+case "$GPU_VENDOR" in
+  AMD)    sudo pacman -S --noconfirm --needed lib32-vulkan-radeon 2>&1 | tail -2 || true ;;
+  Intel)  sudo pacman -S --noconfirm --needed lib32-vulkan-intel  2>&1 | tail -2 || true ;;
+  NVIDIA) sudo pacman -S --noconfirm --needed lib32-nvidia-utils  2>&1 | tail -2 || \
+          sudo pacman -S --noconfirm --needed lib32-vulkan-nouveau 2>&1 | tail -2 || true ;;
+  *)      echo "[WARN] GPU vendor desconocido; instalar manualmente lib32-vulkan-* según tarjeta" ;;
+esac
 
 # Deps audio opcionales (Office funciona sin ellas; mirrors CachyOS suelen
 # servir 404 en builds específicos de lib32-libpulse/lib32-libasyncns).
