@@ -1,7 +1,8 @@
 #!/bin/bash
 # Instalador Office 365 + WineCX para Fedora y derivadas (RHEL, Rocky,
 # AlmaLinux, CentOS Stream, Nobara, Ultramarine, Bazzite).
-# Usa WineCX Fedora-compiled (Wine 10.0 vanilla, sin bundle nettle/gnutls).
+# Usa WineCX 24.0.7 extraído del .deb Debian (CrossOver-Wine, no vanilla),
+# necesario para que el Click-to-Run de Office 365 funcione.
 # Standalone OK desde $HOME/Descargas o invocado por install.sh.
 
 set -euo pipefail
@@ -14,8 +15,7 @@ WORKDIR="${OFFICE365_WORKDIR:-$HOME/Descargas}"
 cd "$WORKDIR"
 
 . /etc/os-release 2>/dev/null || { echo "ERROR: /etc/os-release no encontrado" >&2; exit 1; }
-INIT_SYSTEM="$(cat /proc/1/comm 2>/dev/null || echo unknown)"
-echo ">> Distro: $PRETTY_NAME (init: $INIT_SYSTEM)"
+echo ">> Distro: $PRETTY_NAME"
 
 # ---------------------------------------------------------
 # 1) MSO365.zip
@@ -28,16 +28,16 @@ fi
 cd "$WORKDIR/MSO365"
 
 # ---------------------------------------------------------
-# 2) RPM Fusion + multilib i686 hint
+# 2) RPM Fusion (free + nonfree) para ttf-mscorefonts y otros
 # ---------------------------------------------------------
-echo ">> Habilitando RPM Fusion (free + nonfree) si falta"
+echo ">> Habilitando RPM Fusion (free + nonfree)"
 sudo dnf install -y \
   "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm" \
   2>/dev/null || true
 
 # ---------------------------------------------------------
-# 3) Dependencias runtime (no -devel, solo libs para correr wine + Office)
+# 3) Dependencias runtime (i686 + 64-bit utilidades)
 # ---------------------------------------------------------
 echo ">> Instalando dependencias runtime"
 sudo dnf install -y \
@@ -51,27 +51,25 @@ sudo dnf install -y \
   alsa-lib.i686 pulseaudio-libs.i686 \
   mesa-libGL.i686 mesa-libEGL.i686 libglvnd-glx.i686 libglvnd-egl.i686 \
   ncurses-libs.i686 \
-  libxml2.i686 libxslt.i686 \
-  libusb1.i686 \
-  harfbuzz.i686 \
-  gnutls.i686 libgcrypt.i686 libgpg-error.i686 \
-  nettle.i686 \
+  libxml2.i686 libxslt.i686 libusb1.i686 harfbuzz.i686 \
+  gnutls.i686 libgcrypt.i686 libgpg-error.i686 nettle.i686 \
   libtasn1.i686 libidn2.i686 libunistring.i686 p11-kit.i686 \
-  krb5-libs.i686 openldap.i686 \
-  cups-libs.i686 \
-  zlib-ng-compat.i686 || \
-sudo dnf install -y zlib.i686 || true
+  krb5-libs.i686 openldap.i686 cups-libs.i686 \
+  libfaudio.i686 || true
+
+# Audio opcional (no rompe si falta)
+sudo dnf install -y pipewire-libs.i686 2>/dev/null || true
 
 # 64-bit utilidades
 sudo dnf install -y \
   cabextract msitools \
   samba samba-winbind \
   cups system-config-printer cups-pdf \
-  curl wget tar unzip zstd \
+  curl wget tar unzip zstd cpio \
   fontconfig xdg-utils desktop-file-utils gtk-update-icon-cache \
-  2>&1 | tail -5 || true
+  libfaudio 2>&1 | tail -3 || true
 
-# ttf-mscorefonts: paquete tercero por RPM Fusion / build manual
+# ttf-mscorefonts
 sudo dnf install -y \
   https://downloads.sourceforge.net/project/mscorefonts2/rpms/msttcore-fonts-installer-2.6-1.noarch.rpm \
   2>/dev/null || true
@@ -84,40 +82,54 @@ if ! command -v winetricks >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------
-# 4) Instalar WineCX Fedora-compiled
+# 4) Extraer winecx.deb a /opt/winecx (CrossOver-Wine 24)
 # ---------------------------------------------------------
-WINECX_ZIP="$WORKDIR/winecx-fedora.zip"
-WINECX_SHA="4835f40619af3d44b49e313d5eabfdb3442c15025d3d79d62760c9532bc58656"
+echo ">> Extrayendo winecx.deb (CrossOver-Wine 24.0.7)"
+[ -f "winecx.deb" ] || { echo "ERROR: winecx.deb falta en $(pwd)" >&2; exit 1; }
 
-if [ ! -f "$WINECX_ZIP" ] || ! echo "$WINECX_SHA  $WINECX_ZIP" | sha256sum -c --status; then
-  echo ">> Descargando WineCX Fedora (~432 MB)"
-  curl -fL --retry 5 --retry-delay 3 --progress-bar \
-    -o "$WINECX_ZIP" \
-    "https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx-fedora.zip"
-  echo "$WINECX_SHA  $WINECX_ZIP" | sha256sum -c --status || \
-    { echo "ERROR: SHA256 mismatch winecx-fedora.zip" >&2; exit 1; }
-fi
-
-echo ">> Extrayendo WineCX a /opt"
+# Limpiar instalación previa
+WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wineserver -k 2>/dev/null || true
 sudo rm -rf /opt/winecx
-WORK_EXTRACT=$(mktemp -d)
-unzip -q -o "$WINECX_ZIP" -d "$WORK_EXTRACT"
-sudo mv "$WORK_EXTRACT/winecx" /opt/
-rm -rf "$WORK_EXTRACT"
+
+DEB_WORK="$(mktemp -d)"
+pushd "$DEB_WORK" >/dev/null
+cp "$WORKDIR/MSO365/winecx.deb" .
+ar x winecx.deb
+
+DATA_TAR=$(ls data.tar.* 2>/dev/null | head -1)
+[ -n "$DATA_TAR" ] || { echo "ERROR: no se encontró data.tar.* dentro de .deb" >&2; exit 1; }
+
+sudo mkdir -p /opt/winecx
+case "$DATA_TAR" in
+  *.zst) sudo tar --zstd -xf "$DATA_TAR" -C /opt/winecx ;;
+  *.xz)  sudo tar -xJf "$DATA_TAR" -C /opt/winecx ;;
+  *.gz)  sudo tar -xzf "$DATA_TAR" -C /opt/winecx ;;
+  *)     sudo tar -xf "$DATA_TAR" -C /opt/winecx ;;
+esac
+
+# Aplanar si quedó anidado
+if [ -d /opt/winecx/opt/winecx ]; then
+  sudo cp -a /opt/winecx/opt/winecx/. /opt/winecx/
+  sudo rm -rf /opt/winecx/opt
+fi
+popd >/dev/null
+rm -rf "$DEB_WORK"
 
 sudo chown -R root:root /opt/winecx
 sudo chmod -R 755 /opt/winecx
 
-# Sanity check
 WINE_VER=$(/opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
 echo ">> WineCX: $WINE_VER"
-[[ "$WINE_VER" == "FAILED" ]] && { echo "ERROR: WineCX no arranca" >&2; exit 1; }
+[[ "$WINE_VER" == "FAILED" ]] && { echo "ERROR: WineCX no arranca en Fedora" >&2; exit 1; }
+[[ "$WINE_VER" != crossover-wine-* ]] && \
+  echo "[WARN] Esperado crossover-wine-*, obtuvo $WINE_VER. Office 365 C2R puede fallar."
 
 # ---------------------------------------------------------
-# 5) Copiar prefix Office 365
+# 5) Copiar prefix
 # ---------------------------------------------------------
 echo ">> Copiando prefix Office 365"
 [ -d ".Microsoft_Office_365" ] || { echo "ERROR: prefix no encontrado en MSO365/"; exit 1; }
+rm -rf "$HOME/.Microsoft_Office_365"
 cp -r .Microsoft_Office_365 "$HOME"
 
 # ---------------------------------------------------------
@@ -177,37 +189,37 @@ EOF
 }
 
 create_launcher "word365" "WINWORD.EXE"
-create_desktop  "word365" "Microsoft Word 365" "Procesador de textos de Microsoft Office 365" "Word365" \
+create_desktop  "word365" "Microsoft Word 365" "Procesador de textos" "Word365" \
   "Office;WordProcessor;" \
   "application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.ms-word.document.macroEnabled.12;application/rtf;text/plain;" \
   "winword.exe"
 
 create_launcher "excel365" "EXCEL.EXE"
-create_desktop  "excel365" "Microsoft Excel 365" "Hoja de cálculo de Microsoft Office 365" "Excel365" \
+create_desktop  "excel365" "Microsoft Excel 365" "Hoja de cálculo" "Excel365" \
   "Office;Spreadsheet;" \
   "application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.ms-excel.sheet.macroEnabled.12;text/csv;" \
   "excel.exe"
 
 create_launcher "powerpoint365" "POWERPNT.EXE"
-create_desktop  "powerpoint365" "Microsoft PowerPoint 365" "Presentaciones de Microsoft Office 365" "Powerpoint365" \
+create_desktop  "powerpoint365" "Microsoft PowerPoint 365" "Presentaciones" "Powerpoint365" \
   "Office;Presentation;" \
   "application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.ms-powerpoint.presentation.macroEnabled.12;" \
   "powerpnt.exe"
 
 create_launcher "outlook365" "OUTLOOK.EXE"
-create_desktop  "outlook365" "Microsoft Outlook 365" "Cliente de correo de Microsoft Office 365" "Outlook365" \
+create_desktop  "outlook365" "Microsoft Outlook 365" "Correo electrónico" "Outlook365" \
   "Office;Email;" \
   "application/vnd.ms-outlook;application/mbox;message/rfc822;" \
   "outlook.exe"
 
 create_launcher "access365" "MSACCESS.EXE"
-create_desktop  "access365" "Microsoft Access 365" "Base de datos de Microsoft Office 365" "Access365" \
+create_desktop  "access365" "Microsoft Access 365" "Base de datos" "Access365" \
   "Office;Database;" \
   "application/vnd.ms-access;application/x-msaccess;" \
   "msaccess.exe"
 
 create_launcher "publisher365" "MSPUB.EXE"
-create_desktop  "publisher365" "Microsoft Publisher 365" "Publicaciones de Microsoft Office 365" "Publisher365" \
+create_desktop  "publisher365" "Microsoft Publisher 365" "Publicaciones" "Publisher365" \
   "Office;Publishing;" \
   "application/x-mspublisher;" \
   "mspub.exe"
@@ -274,7 +286,7 @@ mkdir -p "$HOME/.Microsoft_Office_365/drive_c/users/crossover/AppData/Local"
 mkdir -p "$HOME/.Microsoft_Office_365/drive_c/users/crossover/AppData/Roaming"
 
 # ---------------------------------------------------------
-# 9) wineboot -u (sin LD_LIBRARY_PATH - wine vanilla usa libs sistema)
+# 9) wineboot -u
 # ---------------------------------------------------------
 echo ">> Inicializando prefix"
 WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wine wineboot -u || true
@@ -331,7 +343,7 @@ if [ -f "$PREFIX/user.reg" ]; then
 fi
 
 # ---------------------------------------------------------
-# 12) CUPS (systemd) - Fedora siempre systemd
+# 12) CUPS (systemd)
 # ---------------------------------------------------------
 if command -v cupsd >/dev/null 2>&1; then
   sudo systemctl enable --now cups 2>/dev/null || true
