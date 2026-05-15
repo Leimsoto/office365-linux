@@ -171,6 +171,8 @@ curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scrip
 | 7 | Desinstalar todo |
 | 8 | Re-instalación limpia (desinstala + instala) |
 | 9 | Reparar cache de fonts wine (cuelgues en dropdown de fonts) |
+| 10 | Activar Wine virtual desktop (fix ventana transparente KDE/KWin/Wayland) |
+| 11 | Desactivar Wine virtual desktop (volver a ventana nativa) |
 
 ### Atajos manuales
 

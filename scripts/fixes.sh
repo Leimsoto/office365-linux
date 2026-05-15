@@ -330,6 +330,52 @@ uninstall_all() {
 }
 
 # ============================================================
+# 10) Wine virtual desktop (fix ventana transparente en KDE/KWin/Wayland)
+# ============================================================
+enable_virtual_desktop() {
+  [ -d "$PREFIX" ] || die "Prefix $PREFIX no existe"
+  LDP="LD_LIBRARY_PATH=/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine"
+  WINE=/opt/winecx/bin/wine
+
+  echo "Resoluciones comunes:"
+  echo "  1) 1920x1080"
+  echo "  2) 1600x900   (default)"
+  echo "  3) 1366x768"
+  echo "  4) 1280x720"
+  echo "  5) Personalizada"
+  read -r -p "Opción [2]: " ans </dev/tty
+  case "${ans:-2}" in
+    1) RES="1920x1080" ;;
+    2|"") RES="1600x900" ;;
+    3) RES="1366x768" ;;
+    4) RES="1280x720" ;;
+    5) read -r -p "Resolución (ej. 1440x900): " RES </dev/tty ;;
+    *) RES="1600x900" ;;
+  esac
+  log "Resolución: $RES"
+
+  env $LDP WINEPREFIX="$PREFIX" $WINE reg add \
+    "HKCU\\Software\\Wine\\Explorer" /v Desktop /t REG_SZ /d "Office" /f 2>/dev/null
+
+  env $LDP WINEPREFIX="$PREFIX" $WINE reg add \
+    "HKCU\\Software\\Wine\\Explorer\\Desktops" /v Office /t REG_SZ /d "$RES" /f 2>/dev/null
+
+  env $LDP WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+  ok "Wine virtual desktop activado ($RES). Lanza Word/Excel."
+}
+
+disable_virtual_desktop() {
+  [ -d "$PREFIX" ] || die "Prefix $PREFIX no existe"
+  LDP="LD_LIBRARY_PATH=/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine"
+  WINE=/opt/winecx/bin/wine
+
+  env $LDP WINEPREFIX="$PREFIX" $WINE reg delete \
+    "HKCU\\Software\\Wine\\Explorer" /v Desktop /f 2>/dev/null || true
+  env $LDP WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+  ok "Wine virtual desktop desactivado (modo nativo de ventana)"
+}
+
+# ============================================================
 # 9) Reparar cache de fonts wine (cuelgues en dropdown de fonts)
 # ============================================================
 repair_font_cache() {
@@ -418,6 +464,8 @@ menu() {
   7) Desinstalar todo
   8) Re-instalación limpia (desinstala + instala)
   9) Reparar cache de fonts wine (cuelgues en dropdown de fonts)
+ 10) Activar Wine virtual desktop (fix ventana transparente KDE/KWin/Wayland)
+ 11) Desactivar Wine virtual desktop (volver a ventana nativa)
   q) Salir
 
 EOF
@@ -432,6 +480,8 @@ EOF
     7) uninstall_all ;;
     8) reinstall ;;
     9) repair_font_cache ;;
+    10) enable_virtual_desktop ;;
+    11) disable_virtual_desktop ;;
     q|Q) exit 0 ;;
     *) warn "Opción inválida" ;;
   esac
@@ -449,7 +499,9 @@ if [ $# -gt 0 ]; then
     7) uninstall_all ;;
     8) reinstall ;;
     9) repair_font_cache ;;
-    *) die "Opción inválida: $1 (válidas: 1-9)" ;;
+    10) enable_virtual_desktop ;;
+    11) disable_virtual_desktop ;;
+    *) die "Opción inválida: $1 (válidas: 1-11)" ;;
   esac
   exit 0
 fi
