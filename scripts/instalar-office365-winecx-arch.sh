@@ -268,30 +268,51 @@ if [ "${CACHY_NATIVE_MODE:-0}" = "1" ] || [ -n "${CACHY_USE_NATIVE:-}" ]; then
       log "Extrayendo native build..."
       # /opt/winecx puede existir de un install previo con owner root:root.
       sudo rm -rf /opt/winecx
+      sudo mkdir -p /opt/winecx
       unzip -q -o "$NATIVE_ZIP" -d /tmp/winecx-native
-      
-      # Check for build64/build32 directories (make install artifacts)
-      if [ -d /tmp/winecx-native/build64 ] && [ -d /tmp/winecx-native/build32 ]; then
-        log "Instalando build64..."
-        pushd /tmp/winecx-native/build64 >/dev/null
-        sudo make install 2>&1 | tail -5 || true
-        popd >/dev/null
-        
-        log "Instalando build32..."
-        pushd /tmp/winecx-native/build32 >/dev/null
-        sudo make install 2>&1 | tail -5 || true
-        popd >/dev/null
-      else
-        # Just copy the winecx directory
-        sudo cp -r /tmp/winecx-native/winecx /opt/ 2>/dev/null || \
-        sudo cp -r /tmp/winecx-native/* /opt/winecx/ 2>/dev/null || true
+
+      # Localizar build64/build32. El zip de CachyOS extrae a wine/build{32,64};
+      # otras variantes podrían colocarlos en la raíz. Buscamos ambas formas.
+      BUILD_ROOT=""
+      if [ -d /tmp/winecx-native/wine/build64 ] && [ -d /tmp/winecx-native/wine/build32 ]; then
+        BUILD_ROOT="/tmp/winecx-native/wine"
+      elif [ -d /tmp/winecx-native/build64 ] && [ -d /tmp/winecx-native/build32 ]; then
+        BUILD_ROOT="/tmp/winecx-native"
       fi
-      
-      sudo chown -R root:root /opt/winecx 2>/dev/null || true
-      sudo chmod -R 755 /opt/winecx 2>/dev/null || true
+
+      if [ -n "$BUILD_ROOT" ]; then
+        # make install respeta el --prefix con el que se configuró el build
+        # (típicamente /opt/winecx). Si falla, sin || true para detectar el
+        # problema y caer al fallback en lugar de seguir con /opt/winecx vacío.
+        log "Instalando build64 desde $BUILD_ROOT/build64"
+        ( cd "$BUILD_ROOT/build64" && sudo make install ) 2>&1 | tail -5 || \
+          die "make install falló en build64 — abortando native install"
+
+        log "Instalando build32 desde $BUILD_ROOT/build32"
+        ( cd "$BUILD_ROOT/build32" && sudo make install ) 2>&1 | tail -5 || \
+          die "make install falló en build32 — abortando native install"
+
+        # Sanity check: /opt/winecx/bin/wine debería existir tras make install.
+        if [ ! -x /opt/winecx/bin/wine ]; then
+          die "/opt/winecx/bin/wine no apareció tras make install — build mal configurado (¿prefix incorrecto?)"
+        fi
+        ok "Native build instalado vía make install."
+      else
+        # Layout alternativo: zip ya contiene el árbol /opt/winecx pre-built
+        # (sin build64/build32). Probar winecx/ subdir o contenido directo.
+        if [ -d /tmp/winecx-native/winecx ]; then
+          sudo cp -a /tmp/winecx-native/winecx/. /opt/winecx/
+        else
+          sudo cp -a /tmp/winecx-native/. /opt/winecx/
+        fi
+        sudo chown -R root:root /opt/winecx
+        sudo chmod -R 755 /opt/winecx
+        [ -x /opt/winecx/bin/wine ] || \
+          die "/opt/winecx/bin/wine no apareció tras copiar — layout del zip desconocido"
+        ok "Native build instalado vía copia directa."
+      fi
+
       rm -rf /tmp/winecx-native
-      
-      ok "Native build instalado."
       SKIP_DEB=1
     else
       warn "SHA256 mismatch en native zip, continuando con .deb"
@@ -404,19 +425,43 @@ if [[ "$WINE_VER" == *"FAILED"* ]] || [[ "$WINE_VER" == *"error"* ]] || [[ "$WIN
       log "Instalando WineCX native build (fallback)..."
       # /opt/winecx existe de la instalación .deb fallida con owner root:root.
       sudo rm -rf /opt/winecx
+      sudo mkdir -p /opt/winecx
       unzip -q -o "$WORKDIR/$FALLBACK_ZIP" -d /tmp/winecx-native
-      sudo mv /tmp/winecx-native/winecx /opt/ 2>/dev/null || \
-        sudo mv /tmp/winecx-native/wine /opt/winecx 2>/dev/null || \
-        sudo cp -r /tmp/winecx-native/* /opt/winecx/ 2>/dev/null || true
+
+      # Layout posible:
+      #   A) /tmp/winecx-native/wine/build{64,32}        → make install
+      #   B) /tmp/winecx-native/build{64,32}             → make install
+      #   C) /tmp/winecx-native/winecx/                  → cp -a winecx/. /opt/winecx/
+      #   D) /tmp/winecx-native/{bin,lib,...}            → cp -a /tmp/winecx-native/. /opt/winecx/
+      FB_BUILD_ROOT=""
+      if [ -d /tmp/winecx-native/wine/build64 ] && [ -d /tmp/winecx-native/wine/build32 ]; then
+        FB_BUILD_ROOT="/tmp/winecx-native/wine"
+      elif [ -d /tmp/winecx-native/build64 ] && [ -d /tmp/winecx-native/build32 ]; then
+        FB_BUILD_ROOT="/tmp/winecx-native"
+      fi
+      if [ -n "$FB_BUILD_ROOT" ]; then
+        log "Compilando install desde $FB_BUILD_ROOT/build64+build32"
+        ( cd "$FB_BUILD_ROOT/build64" && sudo make install ) 2>&1 | tail -5 || \
+          { warn "make install build64 falló"; FALLBACK_ZIP=""; }
+        ( cd "$FB_BUILD_ROOT/build32" && sudo make install ) 2>&1 | tail -5 || \
+          { warn "make install build32 falló"; FALLBACK_ZIP=""; }
+      elif [ -d /tmp/winecx-native/winecx ]; then
+        sudo cp -a /tmp/winecx-native/winecx/. /opt/winecx/
+      else
+        sudo cp -a /tmp/winecx-native/. /opt/winecx/
+      fi
       sudo chown -R root:root /opt/winecx 2>/dev/null || true
       sudo chmod -R 755 /opt/winecx 2>/dev/null || true
       rm -rf /tmp/winecx-native
-      
+
       # Validate again
+      if [ ! -x /opt/winecx/bin/wine ]; then
+        die "ERROR: /opt/winecx/bin/wine no existe tras fallback — instalación incompleta."
+      fi
       WINE_VER=$(LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine" \
         /opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
       echo ">> WineCX (fallback): $WINE_VER"
-      
+
       if [[ "$WINE_VER" == *"FAILED"* ]] || [[ "$WINE_VER" == *"error"* ]]; then
         die "ERROR: WineCX fallback tampoco funciona. Problema de compatibilidad."
       else
