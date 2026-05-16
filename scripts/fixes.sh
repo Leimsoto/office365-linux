@@ -1,6 +1,7 @@
 #!/bin/bash
 # fixes.sh — Menú interactivo de reparación y mantenimiento para
-# Office 365 (WineCX) en Debian/Ubuntu y Arch/Artix.
+# Office 365 (WineCX) en Debian/Ubuntu/Arch/Artix/CachyOS.
+# Para Fedora se usa Office 2016 (ver scripts específicos).
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/fixes.sh | bash
@@ -28,6 +29,25 @@ esac
 PREFIX="$HOME/.Microsoft_Office_365"
 FONTDIR_SYS="/usr/share/fonts/Windows"
 FONTDIR_PREFIX="$PREFIX/drive_c/windows/Fonts"
+
+# ---------- detect Office installation ----------
+if [ ! -d "$PREFIX" ] && [ -d "$HOME/.office2016" ]; then
+  cat <<'EOF'
+==========================================================
+    Office 2016 detectado (Fedora)
+    Este script es para Office 365 (Debian/Arch/CachyOS).
+    Para Office 2016 en Fedora, los fixes se hacen manualmente:
+    - Prefix: ~/.office2016
+    - Wine: /opt/winecx
+    - Launchers: /opt/wine/launchers
+==========================================================
+EOF
+  exit 0
+fi
+
+if [ ! -d "$PREFIX" ]; then
+  die "No se encontró Office 365 instalado (~/.Microsoft_Office_365 no existe)"
+fi
 
 # ---------- helpers ----------
 c_red()  { printf '\033[1;31m%s\033[0m' "$*"; }
@@ -323,10 +343,8 @@ uninstall_all() {
   warn "Esta acción borrará Office 365 + WineCX + launchers + íconos."
   read -r -p "¿Confirmas? [y/N]: " ans </dev/tty
   [[ ! "$ans" =~ ^[Yy]$ ]] && { log "Cancelado"; return; }
-  case "$FAMILY" in
-    debian) curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/uninstall.sh | bash ;;
-    arch)   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/uninstall-arch.sh | bash ;;
-  esac
+  # Smart uninstaller auto-detects distro and Office version
+  curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/scripts/uninstall.sh | bash
 }
 
 # ============================================================
