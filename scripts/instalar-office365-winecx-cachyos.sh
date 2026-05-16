@@ -63,7 +63,8 @@ sudo pacman -S --needed --noconfirm \
   lib32-alsa-lib lib32-alsa-plugins \
   lib32-libx11 lib32-libxext lib32-libxrender lib32-libxrandr \
   lib32-libxcursor lib32-libxfixes lib32-libxi lib32-libxcomposite \
-  lib32-libxdamage lib32-libxcb lib32-libxxf86vm \
+  lib32-libxdamage lib32-libxcb lib32-libxxf86vm lib32-libxtst \
+  libxcomposite libxcursor libxfixes libxi libxdamage libxtst libxrandr libxrender \
   lib32-freetype2 lib32-libpng lib32-fontconfig \
   lib32-libgcrypt lib32-libgpg-error lib32-gnutls \
   lib32-libsm lib32-libice lib32-glu lib32-mesa \

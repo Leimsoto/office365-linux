@@ -136,6 +136,8 @@ sudo pacman -S --noconfirm --needed \
   wine winetricks \
   lib32-glibc lib32-gcc-libs lib32-freetype2 \
   lib32-libx11 lib32-libxext lib32-libxrender lib32-libxrandr lib32-libxxf86vm \
+  lib32-libxcomposite lib32-libxcursor lib32-libxfixes lib32-libxi lib32-libxdamage lib32-libxtst \
+  libxcomposite libxcursor libxfixes libxi libxdamage libxtst \
   lib32-mesa lib32-libdrm \
   cabextract \
   fontconfig xdg-utils
