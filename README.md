@@ -13,7 +13,7 @@ Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Out
 ![Tested on Debian 13](https://img.shields.io/badge/Tested%20on-Debian%2013%20Trixie-success?logo=debian)
 ![Tested on Artix](https://img.shields.io/badge/Tested%20on-Artix%20runit-success?logo=artixlinux)
 ![Tested on CachyOS](https://img.shields.io/badge/Tested%20on-CachyOS-success?logo=archlinux)
-
+- **[arkhalosid](https://github.com/arkhalosid)** — QA / testing en MX Linux
 ---
 
 ## Instalación rápida (una línea)
