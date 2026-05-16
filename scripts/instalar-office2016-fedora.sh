@@ -140,22 +140,30 @@ WINE_VER=$(/opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
 echo ">> Wine: $WINE_VER"
 
 # ---------------------------------------------------------
-# 4) Crear prefix Office 2016 + Windows 7 mode
+# 4) Crear prefix Office 2016 + Windows 7 mode (SYSTEM wine)
 # ---------------------------------------------------------
-echo ">> Creando prefix $PREFIX (Windows 7)"
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine wineboot 2>&1 | tail -3 || true
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine winecfg -v win7 2>&1 | tail -3 || true
+# IMPORTANTE: prefix init y winetricks corren con wine del sistema (/usr/bin/wine,
+# instalado por dnf más arriba). El build WineCX Fedora viene incompleto (no
+# trae locale resources completos, falta winscard, etc.) y romper msiexec.exe
+# con "WINDEBUG_WHAT_HAPPENED_MESSAGE" + crash al inicializar mono/gecko.
+# Solo el setup.exe de Office 2016 se ejecuta bajo /opt/winecx/bin/wine porque
+# necesita parches CrossOver. Patrón replicado del script original probado.
+command -v wine >/dev/null 2>&1 || { echo "ERROR: wine (sistema) no instalado. dnf install wine debió correr antes." >&2; exit 1; }
+
+echo ">> Creando prefix $PREFIX (Windows 7) con wine sistema"
+WINEPREFIX="$PREFIX" wine wineboot 2>&1 | tail -3 || true
+WINEPREFIX="$PREFIX" wine winecfg -v win7 2>&1 | tail -3 || true
 
 # ---------------------------------------------------------
-# 5) Dependencias wine (winetricks)
+# 5) Dependencias wine (winetricks) — todas bajo wine sistema
 # ---------------------------------------------------------
 echo ">> Instalando deps wine (corefonts, vcrun, dotnet48, etc.) - puede tardar 15+ min"
 WINEPREFIX="$PREFIX" winetricks -q corefonts msxml6 riched20 riched30 gdiplus vb6run 2>&1 | tail -3 || true
 WINEPREFIX="$PREFIX" winetricks -q vcrun2005 vcrun2008 vcrun2010 vcrun2012 vcrun2013 2>&1 | tail -3 || true
 WINEPREFIX="$PREFIX" winetricks -q dotnet48 vcrun2015 2>&1 | tail -3 || true
 WINEPREFIX="$PREFIX" winetricks --force -q vcrun2019 2>&1 | tail -3 || true
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine winecfg -v win7 2>/dev/null || true
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+WINEPREFIX="$PREFIX" wine winecfg -v win7 2>/dev/null || true
+WINEPREFIX="$PREFIX" wineserver -k 2>/dev/null || true
 
 # ---------------------------------------------------------
 # 6) Descomprimir ISO Office 2016
@@ -178,8 +186,9 @@ echo
 read -r -p "Pulsa ENTER para abrir el setup..." </dev/tty
 
 export WINEPREFIX="$PREFIX"
-export PATH="/opt/winecx/bin:$PATH"
 
+# setup.exe SI usa WineCX (binario tiene parches CrossOver para Office). El
+# resto del prefix ya está inicializado por wine sistema, layout compatible.
 WINEPREFIX="$PREFIX" /opt/winecx/bin/wine "$ISO_OUTDIR/setup.exe" || true
 
 echo
@@ -190,7 +199,8 @@ echo "Ahora se abrirá Excel para inicializar la configuración."
 echo "Cierra Excel cuando cargue completamente."
 read -r -p "Pulsa ENTER para abrir Excel..." </dev/tty
 
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine \
+# Excel inicial bajo wine sistema (matches launchers + script original).
+WINEPREFIX="$PREFIX" wine \
   "C:\\Program Files (x86)\\Microsoft Office\\Office16\\EXCEL.EXE" >/dev/null 2>&1 || true
 
 read -r -p "Cuando hayas cerrado Excel, pulsa ENTER..." </dev/tty
@@ -212,31 +222,32 @@ sudo mkdir -p /usr/share/wine/gecko /usr/share/wine/mono
 sudo cp wine-gecko-2.47.4-x86*.msi /usr/share/wine/gecko/
 sudo cp wine-mono-9.4.0-x86.msi    /usr/share/wine/mono/
 
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
+WINEPREFIX="$PREFIX" wine reg add \
   "HKLM\\Software\\Wine\\Gecko" /v Version /t REG_SZ /d "2.47.4" /f 2>/dev/null
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
+WINEPREFIX="$PREFIX" wine reg add \
   "HKLM\\Software\\Wine\\Mono"  /v Version /t REG_SZ /d "9.4.0"  /f 2>/dev/null
 
 # DllOverride winscard: osppcext.dll (Office Software Protection Platform) hace
-# import_dll de WinSCard.dll al arrancar Word/Excel. Sin el override explícito
-# Wine devuelve "Library not found" y la app cae con 0xc06d007e antes de pintar
-# la UI. Si winscard.dll está en /opt/winecx forzamos builtin; si no, vacío
-# (disabled) para que Office arranque aunque OSPP no pueda validar tokens HW.
+# import_dll de WinSCard.dll al arrancar Word/Excel. Sin override explícito y
+# sin winscard.dll en el build el wine cae con 0xc06d007e antes de pintar UI.
+# Probamos primero en wine sistema (suele traer winscard); fallback empty.
 if [ -f /opt/winecx/lib/wine/x86_64-windows/winscard.dll ] || \
-   [ -f /opt/winecx/lib/wine/i386-windows/winscard.dll ]; then
+   [ -f /opt/winecx/lib/wine/i386-windows/winscard.dll ] || \
+   [ -f /usr/lib64/wine/x86_64-windows/winscard.dll ] || \
+   [ -f /usr/lib/wine/x86_64-windows/winscard.dll ]; then
   WS_OVERRIDE="builtin"
-  echo ">> WinSCard DllOverride: builtin (winscard.dll presente en WineCX)"
+  echo ">> WinSCard DllOverride: builtin"
 else
   WS_OVERRIDE=""
-  echo "[WARN] winscard.dll no encontrado en /opt/winecx — Office arrancará pero activación hardware-bound no funcionará"
+  echo "[WARN] winscard.dll no encontrado — Office arrancará pero activación hardware-bound no funcionará"
 fi
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
+WINEPREFIX="$PREFIX" wine reg add \
   "HKCU\\Software\\Wine\\DllOverrides" /v winscard /t REG_SZ /d "$WS_OVERRIDE" /f 2>/dev/null || true
 
 echo ">> Aplicando correcciones DirectX/Direct2D"
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
+WINEPREFIX="$PREFIX" wine reg add \
   "HKCU\\Software\\Wine\\Direct2D" /v max_version_factory /t REG_DWORD /d 0 /f 2>/dev/null
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
+WINEPREFIX="$PREFIX" wine reg add \
   "HKCU\\Software\\Wine\\Direct3D" /v MaxVersionGL /t REG_DWORD /d 0x30002 /f 2>/dev/null
 
 echo ">> Inyectando DLL OSPP (necesario para activador)"
@@ -289,7 +300,7 @@ REGFILE="$WINEPREFIX/allfonts.reg"
     echo "\"$label (TrueType)\"=\"${base}\""
   done
 } > "$REGFILE"
-/opt/winecx/bin/wine regedit "$REGFILE" 2>/dev/null || true
+wine regedit "$REGFILE" 2>/dev/null || true
 '
 
 # ---------------------------------------------------------
@@ -301,18 +312,20 @@ sudo chmod 755 /opt/wine/launchers
 
 create_launcher2016() {
   local name="$1" exe="$2"
+  # Launcher usa wine sistema (matches script original probado). WineCX Fedora
+  # build viene incompleto (sin winscard, locale resources reducidos), forzarlo
+  # en runtime exhibe esos huecos (WINDEBUG_WHAT_HAPPENED_MESSAGE, msiexec crash).
+  # /opt/winecx solo se necesita para Office setup.exe; runtime ya tiene el prefix
+  # poblado y wine sistema lo levanta.
   sudo tee "/opt/wine/launchers/${name}.sh" > /dev/null <<EOF
 #!/bin/bash
-# LD_LIBRARY_PATH defensivo: WineCX Fedora build puede no tener rpath bakeado.
-export LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine:\$LD_LIBRARY_PATH"
 export WINEPREFIX="\$HOME/.office2016"
-export PATH="/opt/winecx/bin:\$PATH"
 export LANG=C.UTF-8
 export WINEDEBUG=-all
 app="C:\\\\Program Files (x86)\\\\Microsoft Office\\\\Office16\\\\${exe}"
-/opt/winecx/bin/wineserver -p >/dev/null 2>&1 || true
-if [ \$# -eq 0 ]; then exec /opt/winecx/bin/wine "\$app"
-else for f in "\$@"; do /opt/winecx/bin/wine "\$app" "Z:\${f//\//\\\\}"; done; fi
+wineserver -p >/dev/null 2>&1 || true
+if [ \$# -eq 0 ]; then exec wine "\$app"
+else for f in "\$@"; do wine "\$app" "Z:\${f//\//\\\\}"; done; fi
 EOF
   sudo chmod +x "/opt/wine/launchers/${name}.sh"
 }
@@ -378,11 +391,11 @@ Windows Registry Editor Version 5.00
 [HKEY_CLASSES_ROOT\Excel.Sheet.12\shell\Open\ddeexec]
 @=""
 EOF
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wine regedit /S /tmp/fix_excel_associations.reg 2>/dev/null || true
+WINEPREFIX="$PREFIX" wine regedit /S /tmp/fix_excel_associations.reg 2>/dev/null || true
 
 sudo update-desktop-database /usr/share/applications 2>/dev/null || true
 
-WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+WINEPREFIX="$PREFIX" wineserver -k 2>/dev/null || true
 
 # ---------------------------------------------------------
 # 11) Activación (instrucciones, NO ejecuta el activador)

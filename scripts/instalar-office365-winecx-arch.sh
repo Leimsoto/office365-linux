@@ -155,7 +155,6 @@ sudo pacman -S --noconfirm --needed \
   base-devel git wget curl pkgconf gettext unzip zstd patchelf \
   clang lld \
   samba gnutls \
-  wine winetricks \
   lib32-glibc lib32-gcc-libs lib32-freetype2 \
   lib32-libx11 lib32-libxext lib32-libxrender lib32-libxrandr lib32-libxxf86vm \
   lib32-libxcomposite lib32-libxcursor lib32-libxfixes lib32-libxi lib32-libxdamage lib32-libxtst \
@@ -163,6 +162,24 @@ sudo pacman -S --noconfirm --needed \
   lib32-mesa lib32-libdrm \
   cabextract \
   fontconfig xdg-utils
+
+# wine/winetricks: instalación condicional para evitar conflictos de archivos
+# con variantes ya presentes (wine-staging, wine-tkg, wine-cellar, wine-ge,
+# etc. — comunes en CachyOS/chaotic-aur). Detectamos por dueño real de
+# /usr/bin/wine: si ya hay otro paquete que lo provee, no intentamos instalar
+# 'wine' encima — pacman fallaría con "archivos en conflicto". El runtime
+# Office 365 usa exclusivamente /opt/winecx/bin/wine; el wine del sistema
+# queda como herramienta auxiliar opcional para troubleshooting.
+if [ -e /usr/bin/wine ]; then
+  wine_owner=$(pacman -Qoq /usr/bin/wine 2>/dev/null || echo "(sin paquete dueño)")
+  echo ">> /usr/bin/wine ya presente — owner: $wine_owner — omitiendo wine"
+  # winetricks no choca con wine variants: intentar instalar igual.
+  sudo pacman -S --noconfirm --needed winetricks 2>&1 | tail -3 || \
+    echo "[WARN] winetricks no instalable, continuando"
+else
+  sudo pacman -S --noconfirm --needed wine winetricks 2>&1 | tail -5 || \
+    echo "[WARN] No se pudo instalar wine/winetricks. Continuando — Office usa /opt/winecx."
+fi
 
 # Vulkan/OpenGL 32-bit ICD según GPU detectada. Sin esto, wine32 no renderiza
 # (ventana sale transparente en KDE Plasma 6 Wayland, GNOME, etc.).
