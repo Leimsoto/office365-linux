@@ -101,7 +101,7 @@ sudo dnf install -y mingw64-gcc mingw64-gcc-c++ mingw64-binutils \
 # ---------------------------------------------------------
 BASE_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0"
 declare -A ASSETS=(
-  ["winecx-fedora.zip"]="4835f40619af3d44b49e313d5eabfdb3442c15025d3d79d62760c9532bc58656"
+   ["winecx.zip"]="4835f40619af3d44b49e313d5eabfdb3442c15025d3d79d62760c9532bc58656"
   ["Requerimientos-Office-2016.zip"]="2088b46518ab3095c649f8a16197bf33de3a9b9fbc4c199db10bcc310ef0ebf1"
   ["FuentesOffice365.zip"]="7d2929c8e23589bb26ae6608d9ccbd37b52d50613369b3c1e3c6ff994cfb1ee6"
 )
@@ -122,11 +122,11 @@ done
 echo ">> Instalando Winecx Fedora a /opt/winecx"
 WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
 sudo rm -rf /opt/winecx
-unzip -q -o "$WORKDIR/winecx-fedora.zip" -d /tmp/winecx-fedora-extract
-sudo mv /tmp/winecx-fedora-extract/winecx /opt/
+unzip -q -o "$WORKDIR/winecx.zip" -d /tmp/winecx-extract
+sudo mv /tmp/winecx-extract/winecx /opt/
 sudo chown -R root:root /opt/winecx
 sudo chmod -R 755 /opt/winecx
-rm -rf /tmp/winecx-fedora-extract
+rm -rf /tmp/winecx-extract
 
 WINE_VER=$(/opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
 echo ">> Wine: $WINE_VER"
