@@ -30,13 +30,14 @@ sudo rm -f "$ICONS_DIR"/{word2016,excel2016,powerpoint2016,outlook2016,access201
 sudo rm -rf "$FONTS_DIR"
 sudo rm -rf /usr/share/wine/gecko /usr/share/wine/mono
 
-# Cleanup ISO extract + temp
-rm -rf "$DESCARGAS/SW_DVD5_Office_Professional_Plus_2016_W32_Spanish_MLF_X20-41360"
+# Cleanup ISO + extract + temp
+rm -rf "$DESCARGAS/OfPro" "$DESCARGAS/SW_DVD5_Office_Professional_Plus_2016_W32_Spanish_MLF_X20-41360"
+rm -f  "$DESCARGAS/OfPro.ISO"
 rm -rf "$DESCARGAS/Requerimientos Office 2016"
 rm -rf "$DESCARGAS/FuentesOffice365"
-rm -f "$DESCARGAS/winecx-fedora.zip"
-rm -f "$DESCARGAS/Requerimientos-Office-2016.zip"
-rm -f "$DESCARGAS/FuentesOffice365.zip"
+rm -f  "$DESCARGAS/winecx-fedora.zip"
+rm -f  "$DESCARGAS/Requerimientos-Office-2016.zip"
+rm -f  "$DESCARGAS/FuentesOffice365.zip"
 
 sudo fc-cache -f >/dev/null 2>&1 || true
 sudo gtk-update-icon-cache "$ICONS_DIR/.." 2>/dev/null || true

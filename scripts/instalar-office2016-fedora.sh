@@ -4,19 +4,16 @@
 #
 # A diferencia del path 365, Office 2016 NO usa Click-to-Run, así que corre
 # con Wine 10 vanilla compilado en Fedora. Requiere instalación interactiva
-# desde ISO + activación manual.
+# desde ISO + activación manual posterior.
 #
-# Materiales que el usuario DEBE proveer en ~/Descargas/ (Microsoft no
-# permite redistribución):
-#   - SW_DVD5_Office_Professional_Plus_2016_W32_Spanish_MLF_X20-41360.iso
-#       Descargar de: https://files.rg-adguard.net/file/539a9ac9-64b7-592f-aa9b-e78379625362
-#       o:           https://buzzheavier.com/yq1n7kpuhkhc
-#   - Activador.rar  (activación KMS — proveído por el usuario)
-#
-# Assets del repo (auto-descargados):
-#   - winecx-fedora.zip            (Wine 10 vanilla Fedora 42 build)
+# Assets auto-descargados:
+#   - OfPro.ISO                       (Office 2016 instalador, archive.org)
+#   - winecx-fedora.zip               (Wine 10 vanilla Fedora 42 build)
 #   - Requerimientos-Office-2016.zip  (gecko/mono MSI, icons, DLLs OSPP)
-#   - FuentesOffice365.zip         (fuentes Office)
+#   - FuentesOffice365.zip            (fuentes Office)
+#
+# Activación: tras instalar, el usuario aplica su propio activador (no
+# redistribuido). El script deja el path /opt/wine/launchers listo.
 
 set -euo pipefail
 
@@ -32,19 +29,16 @@ PREFIX="$HOME/.office2016"
 . /etc/os-release 2>/dev/null || { echo "ERROR: /etc/os-release no encontrado" >&2; exit 1; }
 echo ">> Distro: $PRETTY_NAME"
 
-ISO_FILE="$WORKDIR/SW_DVD5_Office_Professional_Plus_2016_W32_Spanish_MLF_X20-41360.iso"
-ACTIVATOR="$WORKDIR/Activador.rar"
+ISO_FILE="$WORKDIR/OfPro.ISO"
+ISO_URL="https://archive.org/download/of-pro/OfPro.ISO"
+ISO_SHA="020048505e3e7ebc9b4f556b1a9925677922bfc4c6ed94cba0e96dd89f82a75a"
 
-if [ ! -f "$ISO_FILE" ]; then
-  echo
-  echo "ERROR: ISO Office 2016 no encontrada en $ISO_FILE"
-  echo "Descarga manualmente:"
-  echo "  https://files.rg-adguard.net/file/539a9ac9-64b7-592f-aa9b-e78379625362"
-  echo "  https://buzzheavier.com/yq1n7kpuhkhc"
-  echo "  http://ftp.baibrama.cult.cu/Programas%20Windows/OFFICE%2032%20BIT/Office.Professional.Plus.2016.X32/"
-  echo
-  echo "Renombra a: $(basename "$ISO_FILE")"
-  exit 1
+# Auto-descarga ISO si falta / si SHA no coincide
+if [ ! -f "$ISO_FILE" ] || ! echo "$ISO_SHA  $ISO_FILE" | sha256sum -c --status; then
+  echo ">> Descargando ISO Office 2016 (~820 MB desde archive.org)"
+  curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$ISO_FILE" "$ISO_URL"
+  echo "$ISO_SHA  $ISO_FILE" | sha256sum -c --status || \
+    { echo "ERROR: SHA256 mismatch en $ISO_FILE" >&2; exit 1; }
 fi
 
 # ---------------------------------------------------------
@@ -364,21 +358,10 @@ echo
 echo "==============================================="
 echo "  OFFICE 2016 INSTALADO"
 echo "==============================================="
-if [ -f "$ACTIVATOR" ]; then
-  echo
-  echo "Activador detectado en $ACTIVATOR"
-  echo "Para activar Office 2016:"
-  echo "  1) DESACTIVA TU ANTIVIRUS si tienes uno (no aplica en Linux nativo)"
-  echo "  2) Extrae: rar x \"$ACTIVATOR\""
-  echo "  3) Ejecuta el .cmd o .bat de activación desde wine:"
-  echo "     WINEPREFIX=$PREFIX /opt/winecx/bin/wine cmd /c activador.cmd"
-  echo
-  echo "  Actívalo manualmente. Este script no ejecuta activadores por seguridad."
-else
-  echo
-  echo "Activador no encontrado. Office 2016 corre 30 días en evaluación."
-fi
-
+echo
+echo "Office 2016 corre 30 días en modo evaluación."
+echo "Para activación, usa tu licencia legítima o tu propio activador KMS"
+echo "(este script no redistribuye herramientas de activación)."
 echo
 echo "Lanza Word/Excel/PowerPoint/Outlook/Access/Publisher desde tu menú."
 echo "Path del prefix: $PREFIX"
