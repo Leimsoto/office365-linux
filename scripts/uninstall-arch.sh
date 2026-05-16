@@ -36,7 +36,7 @@ sudo rm -rf "$FONTS_DIR"
 # Symlinks en ~/Descargas
 rm -f "$DESCARGAS/MSO365.zip" "$DESCARGAS/MSO365" "$DESCARGAS/winecx.deb" \
       "$DESCARGAS/instalar-office365-winecx.sh" "$DESCARGAS/instalar-office365-winecx-arch.sh" \
-      "$DESCARGAS/instalar-office365-winecx-fedora.sh" \
+      rm -f "$DESCARGAS/instalar-office2016-fedora.sh"
       "$DESCARGAS/arch-winecx-libs.tar.zst"
 
 # Cache descarga

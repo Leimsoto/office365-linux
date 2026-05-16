@@ -8,7 +8,7 @@
 #
 # Assets auto-descargados:
 #   - OfPro.ISO                       (Office 2016 instalador, archive.org)
-#   - winecx-fedora.zip               (Wine 10 vanilla Fedora 42 build)
+#   - winecx.zip                     (Wine Fedora build)
 #   - Requerimientos-Office-2016.zip  (gecko/mono MSI, icons, DLLs OSPP)
 #   - FuentesOffice365.zip            (fuentes Office)
 #
@@ -97,7 +97,7 @@ sudo dnf install -y mingw64-gcc mingw64-gcc-c++ mingw64-binutils \
 [ -e /usr/bin/dlltool ] || sudo ln -sf /usr/bin/x86_64-w64-mingw32-dlltool /usr/bin/dlltool 2>/dev/null || true
 
 # ---------------------------------------------------------
-# 2) Bajar assets repo: winecx-fedora.zip + Requerimientos + Fuentes
+# 2) Bajar assets repo: winecx.zip + Requerimientos + Fuentes
 # ---------------------------------------------------------
 BASE_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0"
 declare -A ASSETS=(

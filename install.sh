@@ -225,7 +225,7 @@ if [ "$OFFICE_VER" = "365" ]; then
   unzip -q -o MSO365.zip
   cp -f winecx.deb MSO365/winecx.deb
 else
-  log "Office 2016 — assets serán descargados por el installer (winecx-fedora.zip + Requerimientos + Fuentes)"
+  log "Office 2016 — assets serán descargados por el installer (winecx.zip + Requerimientos + Fuentes)"
 fi
 
 INSTALLER_RAW="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${INSTALLER_BRANCH}/scripts/${INSTALLER_FILE}"

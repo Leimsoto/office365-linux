@@ -35,7 +35,7 @@ rm -rf "$DESCARGAS/OfPro" "$DESCARGAS/SW_DVD5_Office_Professional_Plus_2016_W32_
 rm -f  "$DESCARGAS/OfPro.ISO"
 rm -rf "$DESCARGAS/Requerimientos Office 2016"
 rm -rf "$DESCARGAS/FuentesOffice365"
-rm -f  "$DESCARGAS/winecx-fedora.zip"
+rm -f  "$DESCARGAS/winecx.zip"
 rm -f  "$DESCARGAS/Requerimientos-Office-2016.zip"
 rm -f  "$DESCARGAS/FuentesOffice365.zip"
 
