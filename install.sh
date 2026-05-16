@@ -9,7 +9,9 @@
 #   --keep-cache    Don't remove downloaded archives after install
 #   --tag=vX.Y.Z    Pin a specific release tag (default: v1.0.0 for assets)
 #   --no-verify     Skip SHA256 verification (NOT recommended)
-#   --family=auto   Force distro family: auto|debian|arch|fedora
+#   --family=auto   Force distro family: auto|debian|arch|cachyos|fedora
+#   --office=365    Office 365 (default)
+#   --office=2016   Office 2016 (Fedora alternativo, requiere ISO manual)
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -39,6 +41,7 @@ KEEP_CACHE=0
 TAG="$DEFAULT_TAG"
 DO_VERIFY=1
 FAMILY_OVERRIDE="auto"
+OFFICE_VER="365"
 for arg in "$@"; do
   case "$arg" in
     -y|--yes)        ASSUME_YES=1 ;;
@@ -46,8 +49,9 @@ for arg in "$@"; do
     --no-verify)     DO_VERIFY=0 ;;
     --tag=*)         TAG="${arg#--tag=}" ;;
     --family=*)      FAMILY_OVERRIDE="${arg#--family=}" ;;
+    --office=*)      OFFICE_VER="${arg#--office=}" ;;
     -h|--help)
-      sed -n '2,14p' "$0"
+      sed -n '2,16p' "$0"
       exit 0
       ;;
     *) echo "Unknown arg: $arg" >&2; exit 2 ;;
@@ -88,7 +92,9 @@ detect_family() {
   case "$ID" in
     debian|ubuntu|linuxmint|pop|mx|raspbian|kali|elementary|zorin|deepin|trisquel|parrot)
       echo "debian"; return ;;
-    arch|manjaro|endeavouros|cachyos|garuda|artix|arcolinux|reborn|chimera)
+    cachyos)
+      echo "cachyos"; return ;;
+    arch|manjaro|endeavouros|garuda|artix|arcolinux|reborn|chimera)
       echo "arch"; return ;;
     fedora|rhel|rocky|almalinux|centos|nobara|ultramarine|bazzite|silverblue|kinoite)
       echo "fedora"; return ;;
@@ -105,28 +111,42 @@ FAMILY="$FAMILY_OVERRIDE"
 [ "$FAMILY" = "auto" ] && FAMILY="$(detect_family)"
 
 case "$FAMILY" in
-  debian) ok "Distro: $PRETTY_NAME (familia: Debian/Ubuntu)" ;;
-  arch)   ok "Distro: $PRETTY_NAME (familia: Arch/Artix)" ;;
-  fedora) ok "Distro: $PRETTY_NAME (familia: Fedora/RHEL)" ;;
-  *)      die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|fedora." ;;
+  debian)  ok "Distro: $PRETTY_NAME (familia: Debian/Ubuntu)" ;;
+  arch)    ok "Distro: $PRETTY_NAME (familia: Arch/Artix)" ;;
+  cachyos) ok "Distro: $PRETTY_NAME (familia: CachyOS — build especial)" ;;
+  fedora)  ok "Distro: $PRETTY_NAME (familia: Fedora/RHEL)" ;;
+  *)       die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|cachyos|fedora." ;;
 esac
 
 # ----- per-family installer script + size estimate -----
-case "$FAMILY" in
-  debian)
+case "$FAMILY:$OFFICE_VER" in
+  debian:365)
     INSTALLER_FILE="instalar-office365-winecx.sh"
     DL_SIZE_MSG="~2.3 GB de assets"
     SYS_CHANGES="apt, /opt/winecx, /usr/share/applications"
     ;;
-  arch)
+  arch:365)
     INSTALLER_FILE="instalar-office365-winecx-arch.sh"
     DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls"
     SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
     ;;
-  fedora)
+  cachyos:365)
+    INSTALLER_FILE="instalar-office365-winecx-cachyos.sh"
+    DL_SIZE_MSG="~2.3 GB de assets + ~1 GB WineCX CachyOS build"
+    SYS_CHANGES="pacman, /opt/winecx (compile-time make install), /usr/share/applications"
+    ;;
+  fedora:365)
     INSTALLER_FILE="instalar-office365-winecx-fedora.sh"
-    DL_SIZE_MSG="~2.3 GB de assets + ~432 MB WineCX Fedora"
+    DL_SIZE_MSG="~2.3 GB de assets + ~225 MB winecx.deb (CrossOver-Wine)"
     SYS_CHANGES="dnf, /opt/winecx, /usr/share/applications, RPM Fusion"
+    ;;
+  fedora:2016)
+    INSTALLER_FILE="instalar-office2016-fedora.sh"
+    DL_SIZE_MSG="~432 MB Wine Fedora + ~367 MB requerimientos. ISO Office 2016 + Activador deben estar en \$HOME/Descargas"
+    SYS_CHANGES="dnf (muchas -devel), /opt/winecx, /opt/wine/launchers, /usr/share/applications, RPM Fusion, ~/.office2016 prefix"
+    ;;
+  *:*)
+    die "Combinación no soportada: family=$FAMILY office=$OFFICE_VER. Office 2016 solo disponible en --family=fedora."
     ;;
 esac
 
@@ -153,7 +173,7 @@ case "$FAMILY" in
     ensure_cmd_debian unzip unzip
     ensure_cmd_debian sha256sum coreutils
     ;;
-  arch)
+  arch|cachyos)
     ensure_cmd_arch curl curl
     ensure_cmd_arch unzip unzip
     ensure_cmd_arch sha256sum coreutils
@@ -170,39 +190,43 @@ esac
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
-# ----- download assets -----
+# ----- download assets (skip si Office 2016 — usa otros assets) -----
 BASE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${TAG}"
 log "Tag: $TAG"
 log "Destino: $WORKDIR"
 
-for a in "${ASSETS[@]}"; do
-  if [ -f "$a" ] && [ "$DO_VERIFY" = "1" ] && echo "${SHA256[$a]}  $a" | sha256sum -c --status; then
-    ok "Cache hit: $a"
-    continue
-  fi
-  log "Descargando $a"
-  curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$a.part" "$BASE_URL/$a"
-  mv "$a.part" "$a"
+if [ "$OFFICE_VER" = "365" ]; then
+  for a in "${ASSETS[@]}"; do
+    if [ -f "$a" ] && [ "$DO_VERIFY" = "1" ] && echo "${SHA256[$a]}  $a" | sha256sum -c --status; then
+      ok "Cache hit: $a"
+      continue
+    fi
+    log "Descargando $a"
+    curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$a.part" "$BASE_URL/$a"
+    mv "$a.part" "$a"
+    if [ "$DO_VERIFY" = "1" ]; then
+      echo "${SHA256[$a]}  $a" | sha256sum -c --status || die "SHA256 mismatch en $a"
+      ok "Verificado $a"
+    fi
+  done
+
+  # ----- join parts -----
+  log "Reuniendo MSO365.zip desde partes"
+  cat MSO365.zip.part00.bin MSO365.zip.part01.bin > MSO365.zip
   if [ "$DO_VERIFY" = "1" ]; then
-    echo "${SHA256[$a]}  $a" | sha256sum -c --status || die "SHA256 mismatch en $a"
-    ok "Verificado $a"
+    echo "${SHA256[MSO365.zip]}  MSO365.zip" | sha256sum -c --status \
+      || die "SHA256 mismatch en MSO365.zip tras unir. Repite la descarga."
+    ok "Verificado MSO365.zip"
   fi
-done
 
-# ----- join parts -----
-log "Reuniendo MSO365.zip desde partes"
-cat MSO365.zip.part00.bin MSO365.zip.part01.bin > MSO365.zip
-if [ "$DO_VERIFY" = "1" ]; then
-  echo "${SHA256[MSO365.zip]}  MSO365.zip" | sha256sum -c --status \
-    || die "SHA256 mismatch en MSO365.zip tras unir. Repite la descarga."
-  ok "Verificado MSO365.zip"
+  # ----- extract -----
+  log "Extrayendo MSO365.zip"
+  rm -rf MSO365
+  unzip -q -o MSO365.zip
+  cp -f winecx.deb MSO365/winecx.deb
+else
+  log "Office 2016 — assets serán descargados por el installer (winecx-fedora.zip + Requerimientos + Fuentes)"
 fi
-
-# ----- extract + run per-family installer -----
-log "Extrayendo MSO365.zip"
-rm -rf MSO365
-unzip -q -o MSO365.zip
-cp -f winecx.deb MSO365/winecx.deb
 
 INSTALLER_RAW="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${INSTALLER_BRANCH}/scripts/${INSTALLER_FILE}"
 log "Descargando script principal: $INSTALLER_RAW"
@@ -221,15 +245,16 @@ log "Ejecutando instalador principal ($FAMILY)"
 OFFICE365_WORKDIR="$WORKDIR" bash "$WORKDIR/$INSTALLER_FILE"
 
 # ----- cleanup -----
-if [ "$KEEP_CACHE" = "0" ]; then
+if [ "$KEEP_CACHE" = "0" ] && [ "$OFFICE_VER" = "365" ]; then
   log "Limpiando cache. Usa --keep-cache para conservar."
   rm -rf "$WORKDIR/MSO365" "$WORKDIR"/MSO365.zip "$WORKDIR"/MSO365.zip.part*.bin
 fi
 
 ok "Instalación completa. Busca 'Word 365', 'Excel 365', etc. en tu menú de aplicaciones."
 echo
-case "$FAMILY" in
-  debian) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
-  arch)   echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
-  fedora) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-fedora.sh | bash" ;;
+case "$FAMILY:$OFFICE_VER" in
+  debian:*)        echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
+  arch:*|cachyos:*) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
+  fedora:365)      echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-fedora.sh | bash" ;;
+  fedora:2016)     echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-office2016-fedora.sh | bash" ;;
 esac

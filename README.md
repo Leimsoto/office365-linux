@@ -36,6 +36,8 @@ Flags disponibles:
 | `--keep-cache`    | Mantener archivos descargados en `~/.cache/office365-linux` |
 | `--tag=vX.Y.Z`    | Usar un release concreto en lugar del más reciente fijado |
 | `--no-verify`     | Omitir verificación SHA256 (no recomendado) |
+| `--family=auto\|debian\|arch\|cachyos\|fedora` | Forzar familia de distro (default: auto-detecta) |
+| `--office=365\|2016` | Versión de Office (default: 365). Office 2016 solo en Fedora — requiere ISO+Activador manual |
 
 ---
 
@@ -216,8 +218,8 @@ Pull requests bienvenidos. Para cambios grandes, abre primero un issue.
 Probado en:
 - **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
 - **Artix Linux (runit)** ✅ verificado end-to-end (v1.1.0)
-- **CachyOS** ✅ verificado end-to-end (v1.1.0)
-- **Fedora** ⚠️ soporte experimental (v1.2.0, en validación)
+- **CachyOS** ✅ verificado end-to-end con build nativo (v1.3.0)
+- **Fedora** ⚠️ soporte experimental: Office 365 (v1.2.0) o Office 2016 alternativo (v1.3.0)
 - Arch / Manjaro / EndeavourOS / Garuda (compatible vía router, mismo path Arch)
 - RHEL / Rocky / AlmaLinux / Nobara / Ultramarine / Bazzite (compatible vía router, mismo path Fedora)
 - Debian 12 (Bookworm)
