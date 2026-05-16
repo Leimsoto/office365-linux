@@ -58,8 +58,34 @@ sudo dnf install -y \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm" \
   2>/dev/null || true
 
-echo ">> Dependencias runtime + compilación"
-sudo dnf install -y \
+echo ">> Dependencias runtime CRÍTICAS (wine, winetricks, runtime libs)"
+# Bloque crítico — debe pasar para que el resto del script funcione. Si dnf falla
+# acá no llegamos a setup.exe. Sin --skip-broken un solo paquete con dep desync
+# (típico: ocl-icd-devel.i686 con ocl-icd x86_64 ya actualizado) aborta TODA la
+# transacción y deja wine sin instalar. --skip-broken hace que dnf omita solo
+# los rotos en vez de tirar todo abajo.
+sudo dnf install -y --skip-broken \
+  wine winetricks msitools cabextract samba samba-winbind gnutls \
+  unzip zstd 7zip xdg-utils \
+  git wget curl pkgconf-pkg-config gettext \
+  cups cups-pdf system-config-printer \
+  mesa-libGL.i686 mesa-libEGL.i686 libglvnd-glx.i686 ncurses-libs.i686 \
+  libXcomposite.i686 libXcursor.i686 libXrandr.i686 libXinerama.i686 libXdamage.i686 \
+  pulseaudio-libs.i686 sane-backends-libs.i686 libusb1.i686 \
+  2>&1 | tail -10 || echo "[WARN] Algunas deps críticas fallaron"
+
+# Verificación temprana: si tras el install crítico wine sigue sin estar, intentar
+# solo (con --skip-broken por si hay otro conflicto puntual).
+if ! command -v wine >/dev/null 2>&1; then
+  echo "[WARN] wine no se instaló en el bloque crítico, reintentando solo"
+  sudo dnf install -y --skip-broken wine winetricks 2>&1 | tail -5 || true
+fi
+
+echo ">> Dependencias compilación / -devel (no críticas, pueden fallar con mirror desync)"
+# Devel solo se usaría para build desde fuente (no es el caso — WineCX es
+# precompilado). Mantenidas por si futuro fix.sh las requiere. Falla = no
+# bloquea Office porque el setup ya no compila wine.
+sudo dnf install -y --skip-broken \
   gcc gcc-c++ clang llvm lld flex bison \
   glibc-devel glibc-devel.i686 \
   libX11-devel libX11-devel.i686 libXext-devel libXext-devel.i686 \
@@ -87,17 +113,10 @@ sudo dnf install -y \
   openldap-devel openldap-devel.i686 \
   libpcap-devel libpcap-devel.i686 \
   ocl-icd-devel ocl-icd-devel.i686 \
-  git wget curl pkgconf-pkg-config gettext \
   SDL2-devel gstreamer1-devel gstreamer1-plugins-base-devel dbus-devel \
   bzip2-devel.i686 harfbuzz-devel.i686 \
   glib2-devel.i686 graphite2-devel.i686 \
-  mesa-libGL.i686 mesa-libEGL.i686 libglvnd-glx.i686 ncurses-libs.i686 \
-  libXcomposite.i686 libXcursor.i686 libXrandr.i686 libXinerama.i686 libXdamage.i686 \
-  pulseaudio-libs.i686 sane-backends-libs.i686 libusb1.i686 \
-  msitools cabextract wine winetricks samba samba-winbind gnutls \
-  cups cups-pdf system-config-printer \
-  unzip zstd 7zip xdg-utils 2>&1 | tail -5 || \
-  echo "[WARN] Algunas deps fallaron, continuando"
+  2>&1 | tail -5 || echo "[WARN] Algunas deps -devel fallaron, continuando"
 
 # mingw para wine32 build extra (opcional)
 sudo dnf install -y mingw64-gcc mingw64-gcc-c++ mingw64-binutils \

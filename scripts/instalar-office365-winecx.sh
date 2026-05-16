@@ -67,6 +67,34 @@ sudo apt-get install -y msitools || true
 sudo apt-get install -y clang lld || true
 sudo apt-get install -y libc6:i386 libgcc1:i386 libstdc++6:i386 || true
 sudo apt-get install -y libfreetype6:i386 libx11-6:i386 libxext6:i386 libxrender1:i386 libxrandr2:i386 || true
+# X11 extras 32-bit que WineD3D y Office necesitan para crear ventanas Direct3D.
+sudo apt-get install -y libxcomposite1:i386 libxcursor1:i386 libxfixes3:i386 libxi6:i386 libxdamage1:i386 libxtst6:i386 libxxf86vm1:i386 || true
+
+# OpenGL/EGL/Vulkan 32-bit. Sin esto Word/Excel caen al inicializar D3D10 con:
+#   wined3d_caps_gl_ctx_create → CreateWindowExA("WineD3D_OpenGL") → 0xe0000002
+# El arch installer ya hace esto vía lib32-mesa + lib32-vulkan-*. En Debian/MX
+# el equivalente son los .i386 de mesa + libGL/EGL/Vulkan loader.
+echo ">> Instalando libs GL/EGL/Vulkan 32-bit (WineD3D context, evita crash D3D)"
+sudo apt-get install -y libgl1:i386 libegl1:i386 libgles2:i386 || true
+sudo apt-get install -y libgl1-mesa-dri:i386 libvulkan1:i386 mesa-vulkan-drivers:i386 || true
+# libosmesa6:i386 = fallback software cuando no hay GPU acelerada (VMs, headless).
+sudo apt-get install -y libosmesa6:i386 || true
+
+# Vulkan ICD vendor-specific. Detección por lspci match el patrón del arch installer.
+GPU_VENDOR_DEB=$(lspci 2>/dev/null | grep -iE 'VGA|3D' | head -1 | grep -ioE 'NVIDIA|AMD|Intel' | head -1 || echo unknown)
+case "$GPU_VENDOR_DEB" in
+  NVIDIA)
+    # NVIDIA propietario vive en non-free. Versión depende del driver instalado.
+    sudo apt-get install -y libnvidia-gl-535:i386 2>/dev/null \
+      || sudo apt-get install -y libnvidia-gl-525:i386 2>/dev/null \
+      || sudo apt-get install -y libnvidia-gl-470:i386 2>/dev/null \
+      || echo "[WARN] libnvidia-gl:i386 no instalable; verificar driver NVIDIA manualmente"
+    ;;
+  *)
+    # AMD/Intel: mesa-vulkan-drivers:i386 ya cubre radv/anv. No-op.
+    ;;
+esac
+
 sudo apt-get install -y winbind samba-common samba-libs gnutls-bin || true
 sudo apt-get install -y ttf-mscorefonts-installer || true
 sudo apt-get install -y wine32:i386 winetricks || true
