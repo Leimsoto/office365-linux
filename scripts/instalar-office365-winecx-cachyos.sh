@@ -135,10 +135,13 @@ echo ">> make install build32 (~1 min)"
 cd "$BUILD32"
 sudo make install 2>&1 | tail -3
 
+# Volver a cwd válido ANTES de borrar build tree (rsync depende de cwd)
+cd "$WORKDIR/MSO365"
+
 sudo chown -R root:root /opt/winecx
 sudo chmod -R 755 /opt/winecx
 
-# Cleanup build tree (3.5 GB)
+# Cleanup build tree (3.5 GB) ahora que cwd está fuera
 rm -rf "$EXTRACT_DIR"
 
 WINE_VER=$(/opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
