@@ -113,7 +113,7 @@ FAMILY="$FAMILY_OVERRIDE"
 case "$FAMILY" in
   debian)  ok "Distro: $PRETTY_NAME (familia: Debian/Ubuntu)" ;;
   arch)    ok "Distro: $PRETTY_NAME (familia: Arch/Artix)" ;;
-  cachyos) ok "Distro: $PRETTY_NAME (familia: CachyOS — build especial)" ;;
+  cachyos) ok "Distro: $PRETTY_NAME (familia: CachyOS — usa mismo path que Arch)" ;;
   fedora)  ok "Distro: $PRETTY_NAME (familia: Fedora/RHEL)" ;;
   *)       die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|cachyos|fedora." ;;
 esac
@@ -131,9 +131,11 @@ case "$FAMILY:$OFFICE_VER" in
     SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
     ;;
   cachyos:365)
-    INSTALLER_FILE="instalar-office365-winecx-cachyos.sh"
-    DL_SIZE_MSG="~2.3 GB de assets + ~1 GB WineCX CachyOS build"
-    SYS_CHANGES="pacman, /opt/winecx (compile-time make install), /usr/share/applications"
+    # CachyOS usa el mismo script que Arch (Debian .deb), asegurando
+    # que libxcomposite y lib32-libxcomposite estén instalados.
+    INSTALLER_FILE="instalar-office365-winecx-arch.sh"
+    DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls"
+    SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
     ;;
   fedora:2016)
     INSTALLER_FILE="instalar-office2016-fedora.sh"
