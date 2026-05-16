@@ -1,8 +1,8 @@
 #!/bin/bash
 # Instalador Office 365 + WineCX para Fedora y derivadas (RHEL, Rocky,
 # AlmaLinux, CentOS Stream, Nobara, Ultramarine, Bazzite).
-# Usa WineCX 24.0.7 extraído del .deb Debian (CrossOver-Wine, no vanilla),
-# necesario para que el Click-to-Run de Office 365 funcione.
+# Usa WineCX compilado para Fedora (CrossOver-Wine, no vanilla Wine),
+ # necesario para que el Click-to-Run de Office 365 funcione.
 # Standalone OK desde $HOME/Descargas o invocado por install.sh.
 
 set -euo pipefail
@@ -82,19 +82,19 @@ if ! command -v winetricks >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------
-# 4) Instalar WineCX Fedora (Wine 10 vanilla, compilado en Fedora 42)
+# 4) Instalar WineCX Fedora (CrossOver-Wine compilado para Fedora)
 # ---------------------------------------------------------
 # Nota: la zip Fedora trae wine-10.0 vanilla (no CrossOver-Wine 24). Office
 # 365 Click-to-Run puede dar 0x6d3-0x0 en algunas instalaciones porque
 # vanilla wine carece de los patches CrossOver. Si C2R falla, prueba el
 # path Office 2016 (--office=2016) que NO usa Click-to-Run.
-WINECX_ZIP="$WORKDIR/winecx-fedora.zip"
+WINECX_ZIP="$WORKDIR/winecx.zip"
 WINECX_SHA="4835f40619af3d44b49e313d5eabfdb3442c15025d3d79d62760c9532bc58656"
 
 if [ ! -f "$WINECX_ZIP" ] || ! echo "$WINECX_SHA  $WINECX_ZIP" | sha256sum -c --status; then
   echo ">> Descargando WineCX Fedora (~432 MB)"
   curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$WINECX_ZIP" \
-    "https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx-fedora.zip"
+    "https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx.zip"
   echo "$WINECX_SHA  $WINECX_ZIP" | sha256sum -c --status || \
     { echo "ERROR: SHA256 mismatch winecx-fedora.zip" >&2; exit 1; }
 fi
