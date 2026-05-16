@@ -119,6 +119,10 @@ case "$FAMILY:$OFFICE_VER" in
   arch:365|cachyos:365)
     UNINSTALLER="uninstall-arch.sh"
     ;;
+  manjaro:365)
+    # Manjaro uses Arch uninstaller
+    UNINSTALLER="uninstall-arch.sh"
+    ;;
   fedora:2016)
     UNINSTALLER="uninstall-office2016-fedora.sh"
     ;;

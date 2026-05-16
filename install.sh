@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Office 365 (WineCX) installer for Debian/Ubuntu AND Arch/Artix
+# install.sh — Office 365 (WineCX) installer for Debian/Ubuntu AND Arch/Manjaro/CachyOS
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/Leimsoto/office365-linux/main/install.sh | bash -s -- --yes
@@ -9,9 +9,13 @@
 #   --keep-cache    Don't remove downloaded archives after install
 #   --tag=vX.Y.Z    Pin a specific release tag (default: v1.0.0 for assets)
 #   --no-verify     Skip SHA256 verification (NOT recommended)
-#   --family=auto   Force distro family: auto|debian|arch|cachyos|fedora
-#   --office=365    Office 365 (default, no disponible en Fedora)
-#   --office=2016   Office 2016 (solo Fedora, requiere ISO manual)
+#   --family=auto   Force distro family: auto|debian|arch|manjaro|cachyos|fedora
+#   --office=365    Office 365 (default, not available on Fedora)
+#   --office=2016   Office 2016 (Fedora only, requires manual ISO)
+#
+# CachyOS special: when detected, shows a switch menu with 2 options:
+#   Option 1 (DEFAULT/RECOMMENDED): Debian .deb (most compatible)
+#   Option 2 (Fallback): winecx_cachy.zip (CachyOS native build)
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -21,7 +25,7 @@ REPO_OWNER="Leimsoto"
 REPO_NAME="office365-linux"
 DEFAULT_TAG="v1.0.0"
 INSTALLER_BRANCH="${OFFICE365_INSTALLER_BRANCH:-main}"
-WORKDIR="${OFFICE365_WORKDIR:-$HOME/.cache/office365-linux}"
+WORKDIR="${OFFICE365_WORKDIR:-$HOME/.cache/office-linux}"
 ASSETS=(
   "MSO365.zip.part00.bin"
   "MSO365.zip.part01.bin"
@@ -35,6 +39,21 @@ declare -A SHA256=(
   ["MSO365.zip"]="a8029fdff0f30b939b56f11c05312cdf5d6ed22481a3122b130420f4260786da"
 )
 
+# CachyOS-specific assets (fallback)
+CACHY_ZIP="winecx_cachy.zip"
+CACHY_ZIP_SHA="4dfe3b8b89edc2a65a98f92f19b4ab51b3504052853f1b71f38ff91dd2886219"
+CACHY_ZIP_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx_cachy.zip"
+
+# Arch-specific assets (fallback)
+ARCH_ZIP="winecx_arch.zip"
+ARCH_ZIP_SHA="2459b0920a33a15791100648393e168fe296f248abdb7ae2eb44c932e252c6fe"
+ARCH_ZIP_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx_arch.zip"
+
+# Manjaro-specific assets (fallback)
+MANJARO_ZIP="winecx_manjaro.zip"
+MANJARO_ZIP_SHA="456bbe42831fa2e6ac7cc48529ab183e4066383136eae14c80b412d75ea63bc0"
+MANJARO_ZIP_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx_manjaro.zip"
+
 # ----- args -----
 ASSUME_YES=0
 KEEP_CACHE=0
@@ -42,6 +61,8 @@ TAG="$DEFAULT_TAG"
 DO_VERIFY=1
 FAMILY_OVERRIDE="auto"
 OFFICE_VER="365"
+CACHY_CHOICE=""  # Will be set by CachyOS menu
+
 for arg in "$@"; do
   case "$arg" in
     -y|--yes)        ASSUME_YES=1 ;;
@@ -59,14 +80,14 @@ for arg in "$@"; do
 done
 
 # ----- helpers -----
-c_red()  { printf '\033[1;31m%s\033[0m' "$*"; }
-c_grn()  { printf '\033[1;32m%s\033[0m' "$*"; }
-c_ylw()  { printf '\033[1;33m%s\033[0m' "$*"; }
-c_blu()  { printf '\033[1;34m%s\033[0m' "$*"; }
-log()    { echo "$(c_blu '[INFO]')  $*"; }
-ok()     { echo "$(c_grn '[ OK ]')  $*"; }
-warn()   { echo "$(c_ylw '[WARN]')  $*"; }
-die()    { echo "$(c_red '[FAIL]')  $*" >&2; exit 1; }
+c_red()    { printf '\033[1;31m%s\033[0m' "$*"; }
+c_grn()    { printf '\033[1;32m%s\033[0m' "$*"; }
+c_ylw()    { printf '\033[1;33m%s\033[0m' "$*"; }
+c_blu()    { printf '\033[1;34m%s\033[0m' "$*"; }
+log()       { echo "$(c_blu '[INFO]')  $*"; }
+ok()        { echo "$(c_grn '[ OK ]')  $*"; }
+warn()      { echo "$(c_ylw '[WARN]')  $*"; }
+die()       { echo "$(c_red '[FAIL]')  $*" >&2; exit 1; }
 
 confirm() {
   [ "$ASSUME_YES" = "1" ] && return 0
@@ -77,15 +98,16 @@ confirm() {
 
 # ----- banner -----
 cat <<'BANNER'
-==========================================================
+=========================================================
    Microsoft Office 365 (WineCX) — Linux installer
    Repo: https://github.com/Leimsoto/office365-linux
    License: GPL-3.0
-==========================================================
+=========================================================
 BANNER
 
 # ----- preflight: distro family detection -----
 [ "$(id -u)" -ne 0 ] || die "No ejecutes como root. El script usa sudo cuando lo necesita."
+
 . /etc/os-release 2>/dev/null || die "No se pudo leer /etc/os-release"
 
 detect_family() {
@@ -94,7 +116,9 @@ detect_family() {
       echo "debian"; return ;;
     cachyos)
       echo "cachyos"; return ;;
-    arch|manjaro|endeavouros|garuda|artix|arcolinux|reborn|chimera)
+    manjaro)
+      echo "manjaro"; return ;;
+    arch|endeavouros|garuda|artix|arcolinux|reborn|chimera)
       echo "arch"; return ;;
     fedora|rhel|rocky|almalinux|centos|nobara|ultramarine|bazzite|silverblue|kinoite)
       echo "fedora"; return ;;
@@ -113,10 +137,45 @@ FAMILY="$FAMILY_OVERRIDE"
 case "$FAMILY" in
   debian)  ok "Distro: $PRETTY_NAME (familia: Debian/Ubuntu)" ;;
   arch)    ok "Distro: $PRETTY_NAME (familia: Arch/Artix)" ;;
-  cachyos) ok "Distro: $PRETTY_NAME (familia: CachyOS — usa mismo path que Arch)" ;;
+  manjaro) ok "Distro: $PRETTY_NAME (familia: Manjaro)" ;;
+  cachyos) ok "Distro: $PRETTY_NAME (familia: CachyOS)" ;;
   fedora)  ok "Distro: $PRETTY_NAME (familia: Fedora/RHEL)" ;;
-  *)       die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|cachyos|fedora." ;;
+  *)       die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|manjaro|cachyos|fedora." ;;
 esac
+
+# ----- CachyOS switch menu -----
+if [ "$FAMILY" = "cachyos" ] && [ "$ASSUME_YES" = "0" ]; then
+  cat <<'CACHY_MENU'
+=========================================================
+   CachyOS Wine Selection Menu
+=========================================================
+   Office 365 requires WineCX (CrossOver-Wine) to work properly.
+
+   Option 1 (RECOMMENDED, DEFAULT):
+     Install using Debian .deb package
+     ✅ Most compatible
+     ✅ Best for Click-to-Run Office 365
+     ✅ Tested and stable
+
+   Option 2 (Fallback only):
+     Install using CachyOS native build (winecx_cachy.zip)
+     ⚠️  Use ONLY if .deb fails
+     ⚠️  NOT recommended for first installation
+     ⚠️  Last resort if compatibility issues
+
+=========================================================
+CACHY_MENU
+  read -r -p "Select option [1] (1=Recommended, 2=Fallback): " CACHY_CHOICE </dev/tty
+  CACHY_CHOICE="${CACHY_CHOICE:-1}"
+  
+  if [ "$CACHY_CHOICE" = "2" ]; then
+    warn "Using CachyOS native build (fallback mode)"
+    export CACHY_USE_NATIVE=1
+  else
+    ok "Using Debian .deb (recommended mode)"
+    export CACHY_USE_NATIVE=0
+  fi
+fi
 
 # ----- per-family installer script + size estimate -----
 case "$FAMILY:$OFFICE_VER" in
@@ -130,12 +189,25 @@ case "$FAMILY:$OFFICE_VER" in
     DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls"
     SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
     ;;
-  cachyos:365)
-    # CachyOS usa el mismo script que Arch (Debian .deb), asegurando
-    # que libxcomposite y lib32-libxcomposite estén instalados.
+  manjaro:365)
+    # Manjaro uses same Arch script by default, with fallback to winecx_manjaro.zip
     INSTALLER_FILE="instalar-office365-winecx-arch.sh"
-    DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls"
-    SYS_CHANGES="pacman/AUR, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
+    DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls (fallback: winecx_manjaro.zip)"
+    SYS_CHANGES="pacman, /opt/winecx, /usr/share/applications, /etc/pacman.conf (multilib)"
+    ;;
+  cachyos:365)
+    if [ "${CACHY_USE_NATIVE:-0}" = "1" ]; then
+      # Fallback mode: use CachyOS native build
+      INSTALLER_FILE="instalar-office365-winecx-arch.sh"
+      export CACHY_NATIVE_MODE=1
+      DL_SIZE_MSG="~1.0 GB winecx_cachy.zip (CachyOS native build - FALLBACK MODE)"
+      SYS_CHANGES="pacman, /opt/winecx (native build), /usr/share/applications"
+    else
+      # Default mode: use Debian .deb (recommended)
+      INSTALLER_FILE="instalar-office365-winecx-arch.sh"
+      DL_SIZE_MSG="~2.3 GB de assets + 4 MB bundle nettle/gnutls (using .deb - RECOMMENDED)"
+      SYS_CHANGES="pacman/AUR, /opt/winecx (from .deb), /usr/share/applications, /etc/pacman.conf (multilib)"
+    fi
     ;;
   fedora:2016)
     INSTALLER_FILE="instalar-office2016-fedora.sh"
@@ -145,7 +217,7 @@ case "$FAMILY:$OFFICE_VER" in
   fedora:*)
     die "Office 365 no está disponible en Fedora. Usa --office=2016 para Fedora."
     ;;
-  *:*)
+  *)
     die "Combinación no soportada: family=$FAMILY office=$OFFICE_VER. Office 2016 solo disponible en --family=fedora."
     ;;
 esac
@@ -173,7 +245,7 @@ case "$FAMILY" in
     ensure_cmd_debian unzip unzip
     ensure_cmd_debian sha256sum coreutils
     ;;
-  arch|cachyos)
+  arch|manjaro|cachyos)
     ensure_cmd_arch curl curl
     ensure_cmd_arch unzip unzip
     ensure_cmd_arch sha256sum coreutils
@@ -192,10 +264,9 @@ cd "$WORKDIR"
 
 # ----- download assets (skip si Office 2016 — usa otros assets) -----
 BASE_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${TAG}"
-log "Tag: $TAG"
-log "Destino: $WORKDIR"
 
 if [ "$OFFICE_VER" = "365" ]; then
+  # Download standard assets
   for a in "${ASSETS[@]}"; do
     if [ -f "$a" ] && [ "$DO_VERIFY" = "1" ] && echo "${SHA256[$a]}  $a" | sha256sum -c --status; then
       ok "Cache hit: $a"
@@ -224,6 +295,36 @@ if [ "$OFFICE_VER" = "365" ]; then
   rm -rf MSO365
   unzip -q -o MSO365.zip
   cp -f winecx.deb MSO365/winecx.deb
+  
+  # ----- CachyOS: download fallback zip if in native mode -----
+  if [ "$FAMILY" = "cachyos" ] && [ "${CACHY_USE_NATIVE:-0}" = "1" ]; then
+    if [ ! -f "$CACHY_ZIP" ] || ! echo "$CACHY_ZIP_SHA  $CACHY_ZIP" | sha256sum -c --status; then
+      log "Descargando $CACHY_ZIP (CachyOS native build)"
+      curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$CACHY_ZIP" "$CACHY_ZIP_URL"
+      echo "$CACHY_ZIP_SHA  $CACHY_ZIP" | sha256sum -c --status || \
+        { echo "ERROR: SHA256 mismatch en $CACHY_ZIP" >&2; exit 1; }
+    fi
+  fi
+  
+  # ----- Manjaro: download fallback zip if needed -----
+  if [ "$FAMILY" = "manjaro" ]; then
+    if [ ! -f "$MANJARO_ZIP" ] || ! echo "$MANJARO_ZIP_SHA  $MANJARO_ZIP" | sha256sum -c --status; then
+      log "Descargando $MANJARO_ZIP (Manjaro fallback)"
+      curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$MANJARO_ZIP" "$MANJARO_ZIP_URL"
+      echo "$MANJARO_ZIP_SHA  $MANJARO_ZIP" | sha256sum -c --status || \
+        { echo "ERROR: SHA256 mismatch en $MANJARO_ZIP" >&2; exit 1; }
+    fi
+  fi
+  
+  # ----- Arch: download fallback zip if needed -----
+  if [ "$FAMILY" = "arch" ]; then
+    if [ ! -f "$ARCH_ZIP" ] || ! echo "$ARCH_ZIP_SHA  $ARCH_ZIP" | sha256sum -c --status; then
+      log "Descargando $ARCH_ZIP (Arch fallback)"
+      curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$ARCH_ZIP" "$ARCH_ZIP_URL"
+      echo "$ARCH_ZIP_SHA  $ARCH_ZIP" | sha256sum -c --status || \
+        { echo "ERROR: SHA256 mismatch en $ARCH_ZIP" >&2; exit 1; }
+    fi
+  fi
 else
   log "Office 2016 — assets serán descargados por el installer (winecx.zip + Requerimientos + Fuentes)"
 fi
@@ -241,6 +342,11 @@ ln -sf "$WORKDIR/winecx.deb"          "$DESCARGAS/winecx.deb"
 ln -sf "$WORKDIR/MSO365"              "$DESCARGAS/MSO365"
 ln -sf "$WORKDIR/$INSTALLER_FILE"     "$DESCARGAS/$INSTALLER_FILE"
 
+# Create symlinks for fallback zips if they exist
+[ -f "$WORKDIR/$CACHY_ZIP" ] && ln -sf "$WORKDIR/$CACHY_ZIP" "$DESCARGAS/$CACHY_ZIP" 2>/dev/null || true
+[ -f "$WORKDIR/$ARCH_ZIP" ] && ln -sf "$WORKDIR/$ARCH_ZIP" "$DESCARGAS/$ARCH_ZIP" 2>/dev/null || true
+[ -f "$WORKDIR/$MANJARO_ZIP" ] && ln -sf "$WORKDIR/$MANJARO_ZIP" "$DESCARGAS/$MANJARO_ZIP" 2>/dev/null || true
+
 log "Ejecutando instalador principal ($FAMILY)"
 OFFICE365_WORKDIR="$WORKDIR" bash "$WORKDIR/$INSTALLER_FILE"
 
@@ -252,8 +358,10 @@ fi
 
 ok "Instalación completa. Busca 'Word 365', 'Excel 365', etc. en tu menú de aplicaciones."
 echo
+
+# ----- show appropriate uninstaller -----
 case "$FAMILY:$OFFICE_VER" in
    debian:*)        echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
-   arch:*|cachyos:*) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
+   arch:*|manjaro:*|cachyos:*) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
    fedora:*)        echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-office2016-fedora.sh | bash" ;;
 esac

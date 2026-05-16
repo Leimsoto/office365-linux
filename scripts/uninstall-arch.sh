@@ -14,6 +14,32 @@ echo "==============================================="
 echo "  Desinstalando Office 365 WineCX (Arch family)"
 echo "==============================================="
 
+# Detect installation method used
+WAS_NATIVE=0
+if [ -d "/opt/winecx/build64" ] || [ -d "/opt/winecx/build32" ]; then
+  WAS_NATIVE=1
+  log "Detected native build installation"
+elif [ -f "/opt/winecx/bin/wine" ] && \
+     (file "/opt/winecx/bin/wine" 2>/dev/null | grep -q "ELF.*64-bit"; then
+  # Check if it has the bundle libs (indicative of .deb installation)
+  if [ -d "/opt/winecx/lib" ] && [ -d "/opt/winecx/lib32" ]; then
+    # Could be either .deb or native, check for make install artifacts
+    if find "/opt/winecx" -name "*.o" -type f 2>/dev/null | head -1 | grep -q "."; then
+      WAS_NATIVE=1
+      log "Detected native build installation (found .o artifacts)"
+    else
+      WAS_NATIVE=0
+      log "Detected .deb installation (with bundle libs)"
+    fi
+  else
+    WAS_NATIVE=1
+    log "Detected native build installation"
+  fi
+else
+  WAS_NATIVE=0
+  log "Detected .deb installation"
+fi
+
 # Cerrar wine
 [ -d "$PREFIX" ] && [ -x "$WINECX/bin/wineserver" ] && \
   WINEPREFIX="$PREFIX" "$WINECX/bin/wineserver" -k 2>/dev/null || true
@@ -22,7 +48,14 @@ pkill -KILL -f 'WINWORD\.EXE|EXCEL\.EXE|POWERPNT\.EXE|OUTLOOK\.EXE|MSACCESS\.EXE
 
 # Prefix + WineCX (incluye bundle libs nettle/gnutls)
 sudo rm -rf "$PREFIX"
-sudo rm -rf "$WINECX"
+if [ "${WAS_NATIVE:-0}" = "1" ]; then
+  warn "Removing native build WineCX..."
+  # Native builds don't have a clean uninstall, just remove the directory
+  sudo rm -rf /opt/winecx
+else
+  # .deb installation
+  sudo rm -rf "$WINECX"
+fi
 
 # .desktop entries
 sudo rm -f "$APPS_DIR"/{word365,excel365,powerpoint365,outlook365,access365,publisher365,kill_office}.desktop

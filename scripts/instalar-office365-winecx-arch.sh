@@ -197,38 +197,100 @@ echo ">> Paquetes AUR (msitools, ttf-ms-fonts)"
   echo "[WARN] Fallo al instalar msitools/ttf-ms-fonts desde AUR, continuando"
 
 # ---------------------------------------------------------
-# 5) Extraer winecx.deb a /opt/winecx (manual, sin dpkg)
+# 5.5) Check for native build mode (CachyOS/Manjaro/Fallback)
 # ---------------------------------------------------------
-echo ">> Extrayendo winecx.deb"
-[ -f "winecx.deb" ] || { echo "ERROR: winecx.deb falta en $(pwd)" >&2; exit 1; }
-
-DEB_WORK="$(mktemp -d)"
-pushd "$DEB_WORK" >/dev/null
-cp "$WORKDIR/MSO365/winecx.deb" .
-ar x winecx.deb
-
-# Detectar nombre de data.tar.* (puede ser xz, zst, gz)
-DATA_TAR=$(ls data.tar.* 2>/dev/null | head -1)
-[ -n "$DATA_TAR" ] || { echo "ERROR: no se encontró data.tar.* dentro de .deb" >&2; exit 1; }
-
-sudo mkdir -p /opt/winecx
-case "$DATA_TAR" in
-  *.zst) sudo tar --zstd -xf "$DATA_TAR" -C /opt/winecx ;;
-  *.xz)  sudo tar -xJf "$DATA_TAR" -C /opt/winecx ;;
-  *.gz)  sudo tar -xzf "$DATA_TAR" -C /opt/winecx ;;
-  *)     sudo tar -xf "$DATA_TAR" -C /opt/winecx ;;
-esac
-
-# Algunas builds dejan /opt/winecx/opt/winecx -> aplanar
-if [ -d /opt/winecx/opt/winecx ]; then
-  sudo cp -a /opt/winecx/opt/winecx/. /opt/winecx/
-  sudo rm -rf /opt/winecx/opt
+if [ "${CACHY_NATIVE_MODE:-0}" = "1" ] || [ -n "${CACHY_USE_NATIVE:-}" ]; then
+  echo ">> MODO NATIVO: Instalando Wine desde build nativo..."
+  
+  # Determine which zip to use
+  NATIVE_ZIP=""
+  NATIVE_ZIP_SHA=""
+  
+  if [ "$ID" = "cachyos" ] && [ -f "$WORKDIR/winecx_cachy.zip" ]; then
+    NATIVE_ZIP="$WORKDIR/winecx_cachy.zip"
+    NATIVE_ZIP_SHA="4dfe3b8b89edc2a65a98f92f19b4ab51b3504052853f1b71f38ff91dd2886219"
+    log "Usando winecx_cachy.zip (CachyOS native build)"
+  elif [ "$ID" = "manjaro" ] && [ -f "$WORKDIR/winecx_manjaro.zip" ]; then
+    NATIVE_ZIP="$WORKDIR/winecx_manjaro.zip"
+    NATIVE_ZIP_SHA="456bbe42831fa2e6ac7cc48529ab183e4066383136eae14c80b412d75ea63bc0"
+    log "Usando winecx_manjaro.zip (Manjaro native build)"
+  elif [ -f "$WORKDIR/winecx_arch.zip" ]; then
+    NATIVE_ZIP="$WORKDIR/winecx_arch.zip"
+    NATIVE_ZIP_SHA="2459b0920a33a15791100648393e168fe296f248abdb7ae2eb44c932e252c6fe"
+    log "Usando winecx_arch.zip (Arch native build)"
+  fi
+  
+  if [ -n "$NATIVE_ZIP" ]; then
+    # Verify SHA256
+    if echo "$NATIVE_ZIP_SHA  $NATIVE_ZIP" | sha256sum -c --status 2>/dev/null; then
+      log "Extrayendo native build..."
+      rm -rf /opt/winecx
+      unzip -q -o "$NATIVE_ZIP" -d /tmp/winecx-native
+      
+      # Check for build64/build32 directories (make install artifacts)
+      if [ -d /tmp/winecx-native/build64 ] && [ -d /tmp/winecx-native/build32 ]; then
+        log "Instalando build64..."
+        pushd /tmp/winecx-native/build64 >/dev/null
+        sudo make install 2>&1 | tail -5 || true
+        popd >/dev/null
+        
+        log "Instalando build32..."
+        pushd /tmp/winecx-native/build32 >/dev/null
+        sudo make install 2>&1 | tail -5 || true
+        popd >/dev/null
+      else
+        # Just copy the winecx directory
+        sudo cp -r /tmp/winecx-native/winecx /opt/ 2>/dev/null || \
+        sudo cp -r /tmp/winecx-native/* /opt/winecx/ 2>/dev/null || true
+      fi
+      
+      sudo chown -R root:root /opt/winecx 2>/dev/null || true
+      sudo chmod -R 755 /opt/winecx 2>/dev/null || true
+      rm -rf /tmp/winecx-native
+      
+      ok "Native build instalado."
+      SKIP_DEB=1
+    else
+      warn "SHA256 mismatch en native zip, continuando con .deb"
+    fi
+  fi
 fi
-popd >/dev/null
-rm -rf "$DEB_WORK"
 
-sudo chown -R root:root /opt/winecx
-sudo chmod -R 755 /opt/winecx
+if [ "${SKIP_DEB:-0}" != "1" ]; then
+  # ---------------------------------------------------------
+  # 5) Extraer winecx.deb a /opt/winecx (manual, sin dpkg)
+  # ---------------------------------------------------------
+  echo ">> Extrayendo winecx.deb"
+  [ -f "winecx.deb" ] || { echo "ERROR: winecx.deb falta en $(pwd)" >&2; exit 1; }
+
+  DEB_WORK="$(mktemp -d)"
+  pushd "$DEB_WORK" >/dev/null
+  cp "$WORKDIR/MSO365/winecx.deb" .
+  ar x winecx.deb
+
+  # Detectar nombre de data.tar.* (puede ser xz, zst, gz)
+  DATA_TAR=$(ls data.tar.* 2>/dev/null | head -1)
+  [ -n "$DATA_TAR" ] || { echo "ERROR: no se encontró data.tar.* dentro de .deb" >&2; exit 1; }
+
+  sudo mkdir -p /opt/winecx
+  case "$DATA_TAR" in
+    *.zst) sudo tar --zstd -xf "$DATA_TAR" -C /opt/winecx ;;
+    *.xz)  sudo tar -xJf "$DATA_TAR" -C /opt/winecx ;;
+    *.gz)  sudo tar -xzf "$DATA_TAR" -C /opt/winecx ;;
+    *)     sudo tar -xf "$DATA_TAR" -C /opt/winecx ;;
+  esac
+
+  # Algunas builds dejan /opt/winecx/opt/winecx -> aplanar
+  if [ -d /opt/winecx/opt/winecx ]; then
+    sudo cp -a /opt/winecx/opt/winecx/. /opt/winecx/
+    sudo rm -rf /opt/winecx/opt
+  fi
+  popd >/dev/null
+  rm -rf "$DEB_WORK"
+
+  sudo chown -R root:root /opt/winecx
+  sudo chmod -R 755 /opt/winecx
+fi
 
 # ---------------------------------------------------------
 # 6) Bundle nettle/gnutls 3.7 (fix ABI break con nettle 4.0 del sistema)
@@ -251,10 +313,75 @@ for lib in /opt/winecx/lib/libhogweed.so.* /opt/winecx/lib32/libhogweed.so.*; do
   [ -f "$lib" ] && [ ! -L "$lib" ] && /opt/winecx/bin/wine --version >/dev/null 2>&1 || true
 done
 
-# Sanity check wine
-WINE_VER=$(LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine" /opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
+# ----- 6) Verificar que Wine funciona (con LD_LIBRARY_PATH) -----
+log "Verificando que WineCX funciona..."
+WINE_VER=$(LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine" \
+  /opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
 echo ">> WineCX: $WINE_VER"
-[[ "$WINE_VER" == "FAILED" ]] && { echo "ERROR: WineCX no arranca" >&2; exit 1; }
+
+if [[ "$WINE_VER" == *"FAILED"* ]] || [[ "$WINE_VER" == *"error"* ]] || [[ "$WINE_VER" == *"command not found"* ]]; then
+  warn "WineCX .deb no funciona correctamente en $PRETTY_NAME"
+  echo "Diagnóstico: $WINE_VER"
+  
+  # Check if we should try fallback
+  FALLBACK_ZIP=""
+  FALLBACK_SHA=""
+  FALLBACK_URL=""
+  
+  if [ "$ID" = "cachyos" ] && [ -f "$WORKDIR/winecx_cachy.zip" ]; then
+    FALLBACK_ZIP="winecx_cachy.zip"
+    FALLBACK_SHA="4dfe3b8b89edc2a65a98f92f19b4ab51b3504052853f1b71f38ff91dd2886219"
+    FALLBACK_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx_cachy.zip"
+    warn "Intentando fallback: winecx_cachy.zip (CachyOS native build)"
+  elif [ "$ID" = "manjaro" ] && [ -f "$WORKDIR/winecx_manjaro.zip" ]; then
+    FALLBACK_ZIP="winecx_manjaro.zip"
+    FALLBACK_SHA="456bbe42831fa2e6ac7cc48529ab183e4066383136eae14c80b412d75ea63bc0"
+    FALLBACK_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx_manjaro.zip"
+    warn "Intentando fallback: winecx_manjaro.zip (Manjaro native build)"
+  elif [ -f "$WORKDIR/winecx_arch.zip" ]; then
+    FALLBACK_ZIP="winecx_arch.zip"
+    FALLBACK_SHA="2459b0920a33a15791100648393e168fe296f248abdb7ae2eb44c932e252c6fe"
+    FALLBACK_URL="https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx_arch.zip"
+    warn "Intentando fallback: winecx_arch.zip (Arch native build)"
+  fi
+  
+  if [ -n "$FALLBACK_ZIP" ]; then
+    # Verify SHA256
+    if ! echo "$FALLBACK_SHA  $WORKDIR/$FALLBACK_ZIP" | sha256sum -c --status 2>/dev/null; then
+      log "Descargando $FALLBACK_ZIP..."
+      curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$WORKDIR/$FALLBACK_ZIP" "$FALLBACK_URL"
+      echo "$FALLBACK_SHA  $WORKDIR/$FALLBACK_ZIP" | sha256sum -c --status || \
+        { warn "SHA256 mismatch en $FALLBACK_ZIP"; FALLBACK_ZIP=""; }
+    fi
+    
+    if [ -n "$FALLBACK_ZIP" ]; then
+      log "Instalando WineCX native build (fallback)..."
+      rm -rf /opt/winecx
+      unzip -q -o "$WORKDIR/$FALLBACK_ZIP" -d /tmp/winecx-native
+      sudo mv /tmp/winecx-native/winecx /opt/ 2>/dev/null || \
+        sudo mv /tmp/winecx-native/wine /opt/winecx 2>/dev/null || \
+        sudo cp -r /tmp/winecx-native/* /opt/winecx/ 2>/dev/null || true
+      sudo chown -R root:root /opt/winecx 2>/dev/null || true
+      sudo chmod -R 755 /opt/winecx 2>/dev/null || true
+      rm -rf /tmp/winecx-native
+      
+      # Validate again
+      WINE_VER=$(LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine" \
+        /opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
+      echo ">> WineCX (fallback): $WINE_VER"
+      
+      if [[ "$WINE_VER" == *"FAILED"* ]] || [[ "$WINE_VER" == *"error"* ]]; then
+        die "ERROR: WineCX fallback tampoco funciona. Problema de compatibilidad."
+      else
+        ok "WineCX fallback instalado y funcionando: $WINE_VER"
+      fi
+    fi
+  else
+    die "ERROR: WineCX no arranca y no hay fallback disponible."
+  fi
+else
+  ok "WineCX funcionando: $WINE_VER"
+fi
 
 # ---------------------------------------------------------
 # 7) Copiar prefix Office 365 al HOME

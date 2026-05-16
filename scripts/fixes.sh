@@ -12,30 +12,38 @@ set -euo pipefail
 # ---------- detección distro / familia ----------
 . /etc/os-release 2>/dev/null || { echo "ERROR: /etc/os-release no encontrado"; exit 1; }
 
-case "$ID" in
-  debian|ubuntu|linuxmint|pop|mx|raspbian|kali|elementary|zorin|deepin|trisquel|parrot)
-    FAMILY="debian" ;;
-  arch|manjaro|endeavouros|cachyos|garuda|artix|arcolinux|reborn|chimera)
-    FAMILY="arch" ;;
-  *)
-    case "${ID_LIKE:-}" in
-      *debian*|*ubuntu*) FAMILY="debian" ;;
-      *arch*)            FAMILY="arch" ;;
-      *)                 FAMILY="unknown" ;;
-    esac
-    ;;
-esac
+detect_family() {
+  case "$ID" in
+    debian|ubuntu|linuxmint|pop|mx|raspbian|kali|elementary|zorin|deepin|trisquel|parrot)
+      echo "debian"; return ;;
+    cachyos)
+      echo "cachyos"; return ;;
+    manjaro)
+      echo "manjaro"; return ;;
+    arch|endeavouros|garuda|artix|arcolinux|reborn|chimera)
+      echo "arch"; return ;;
+    *)
+      case "${ID_LIKE:-}" in
+        *debian*|*ubuntu*) echo "debian"; return ;;
+        *arch*)            echo "arch"; return ;;
+        *)                 echo "unknown"; return ;;
+      esac
+      ;;
+  esac
+}
 
+FAMILY="$(detect_family)"
+
+# ---------- check for Office 365 or 2016 ----------
 PREFIX="$HOME/.Microsoft_Office_365"
 FONTDIR_SYS="/usr/share/fonts/Windows"
 FONTDIR_PREFIX="$PREFIX/drive_c/windows/Fonts"
 
-# ---------- detect Office installation ----------
 if [ ! -d "$PREFIX" ] && [ -d "$HOME/.office2016" ]; then
   cat <<'EOF'
 ==========================================================
     Office 2016 detectado (Fedora)
-    Este script es para Office 365 (Debian/Arch/CachyOS).
+    Este script es para Office 365 (Debian/Arch/Manjaro/CachyOS).
     Para Office 2016 en Fedora, los fixes se hacen manualmente:
     - Prefix: ~/.office2016
     - Wine: /opt/winecx
@@ -43,6 +51,10 @@ if [ ! -d "$PREFIX" ] && [ -d "$HOME/.office2016" ]; then
 ==========================================================
 EOF
   exit 0
+fi
+
+if [ ! -d "$PREFIX" ]; then
+  die "No se encontró Office 365 instalado (~/.Microsoft_Office_365 no existe)"
 fi
 
 if [ ! -d "$PREFIX" ]; then
