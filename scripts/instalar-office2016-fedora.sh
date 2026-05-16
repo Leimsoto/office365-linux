@@ -17,6 +17,14 @@
 
 set -euo pipefail
 
+# Root guard: si se ejecuta como root, $USER/$HOME apuntan a /root y el prefix
+# Office se crea bajo /root/.office2016, inarrancable para el usuario real.
+# install.sh ya rechaza root; este check protege ejecución standalone directa.
+if [ "$(id -u)" -eq 0 ]; then
+  echo "ERROR: no ejecutes este script como root. Llamalo como usuario normal; usa sudo cuando lo pida." >&2
+  exit 1
+fi
+
 echo "==============================================="
 echo "  Office 2016 - Wine (Fedora / RHEL / Rocky)"
 echo "  Path alternativo cuando Office 365 falla"

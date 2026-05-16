@@ -1,6 +1,6 @@
 #!/bin/bash
 # Desinstalador limpio Office 2016 — Fedora/RHEL
-set -e
+set -euo pipefail
 
 PREFIX="$HOME/.office2016"
 WINECX="/opt/winecx"

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Desinstalador limpio Office 365 WineCX — Fedora/RHEL/Rocky/Alma/Nobara
-set -e
+set -euo pipefail
 
 PREFIX="$HOME/.Microsoft_Office_365"
 WINECX="/opt/winecx"
@@ -35,9 +35,10 @@ sudo rm -rf "$FONTS_DIR"
 
 # Symlinks
 rm -f "$DESCARGAS/MSO365.zip" "$DESCARGAS/MSO365" "$DESCARGAS/winecx.deb" \
-      "$DESCARGAS/instalar-office365-winecx.sh" "$DESCARGAS/instalar-office365-winecx-arch.sh" \
-rm -f "$DESCARGAS/instalar-office2016-fedora.sh" \
-       "$DESCARGAS/winecx.zip"
+      "$DESCARGAS/instalar-office365-winecx.sh" \
+      "$DESCARGAS/instalar-office365-winecx-arch.sh" \
+      "$DESCARGAS/instalar-office2016-fedora.sh" \
+      "$DESCARGAS/winecx.zip"
 
 # Cache descarga
 rm -rf "$CACHE_DIR"

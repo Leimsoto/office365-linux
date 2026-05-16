@@ -1,6 +1,6 @@
 #!/bin/bash
 # Desinstalador limpio Office 365 WineCX — Arch/Artix/Manjaro/CachyOS
-set -e
+set -euo pipefail
 
 # Helpers (log/ok/warn/die). Necesarios para ejecución standalone vía curl|bash.
 c_red() { printf '\033[1;31m%s\033[0m' "$*"; }

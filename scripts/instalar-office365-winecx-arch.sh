@@ -21,6 +21,13 @@ ok()   { echo "$(c_grn '[ OK ]')  $*"; }
 warn() { echo "$(c_ylw '[WARN]')  $*"; }
 die()  { echo "$(c_red '[FAIL]')  $*" >&2; exit 1; }
 
+# Root guard: si se ejecuta como root, $USER/$HOME apuntan a /root y el chown
+# posterior del prefix deja Office inarrancable para el usuario real. install.sh
+# ya rechaza root; este check protege ejecución standalone directa.
+if [ "$(id -u)" -eq 0 ]; then
+  die "no ejecutes este script como root. Llamalo como usuario normal; usa sudo cuando lo pida."
+fi
+
 echo "==============================================="
 echo "  Office 365 - WineCX (Arch / Artix / Manjaro)"
 echo "==============================================="
@@ -198,12 +205,15 @@ done
 if [ -z "$AUR_HELPER" ]; then
   echo ">> Instalando yay-bin desde AUR"
   AUR_TMP="$(mktemp -d)"
+  # Cleanup en EXIT/INT/TERM para no dejar $AUR_TMP huérfano en /tmp ante Ctrl-C.
+  trap 'rm -rf "$AUR_TMP"' EXIT INT TERM
   pushd "$AUR_TMP" >/dev/null
   git clone --depth=1 https://aur.archlinux.org/yay-bin.git
   cd yay-bin
   makepkg -si --noconfirm
   popd >/dev/null
   rm -rf "$AUR_TMP"
+  trap - EXIT INT TERM
   AUR_HELPER="yay"
 fi
 
@@ -280,6 +290,8 @@ if [ "${SKIP_DEB:-0}" != "1" ]; then
   [ -f "winecx.deb" ] || { echo "ERROR: winecx.deb falta en $(pwd)" >&2; exit 1; }
 
   DEB_WORK="$(mktemp -d)"
+  # Cleanup ante salida abrupta. ar/tar pueden tardar; Ctrl-C frecuente.
+  trap 'rm -rf "$DEB_WORK"' EXIT INT TERM
   pushd "$DEB_WORK" >/dev/null
   cp "$WORKDIR/MSO365/winecx.deb" .
   ar x winecx.deb
@@ -303,6 +315,7 @@ if [ "${SKIP_DEB:-0}" != "1" ]; then
   fi
   popd >/dev/null
   rm -rf "$DEB_WORK"
+  trap - EXIT INT TERM
 
   sudo chown -R root:root /opt/winecx
   sudo chmod -R 755 /opt/winecx

@@ -3,8 +3,15 @@
 # Esperado: directorio MSO365/ desempaquetado y winecx.deb dentro.
 # Puede ejecutarse standalone desde $HOME/Descargas o invocado por install.sh.
 
-set -e
-set -o pipefail
+set -euo pipefail
+
+# Root guard: si se ejecuta como root, $USER/$HOME apuntan a /root y el chown
+# posterior del prefix deja Office inarrancable para el usuario real. install.sh
+# ya rechaza root; este check protege ejecución standalone directa.
+if [ "$(id -u)" -eq 0 ]; then
+  echo "ERROR: no ejecutes este script como root. Llamalo como usuario normal; usa sudo cuando lo pida." >&2
+  exit 1
+fi
 
 echo "==============================================="
 echo "  Instalador automático Office 365 - WineCX"
