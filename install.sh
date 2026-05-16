@@ -10,8 +10,8 @@
 #   --tag=vX.Y.Z    Pin a specific release tag (default: v1.0.0 for assets)
 #   --no-verify     Skip SHA256 verification (NOT recommended)
 #   --family=auto   Force distro family: auto|debian|arch|cachyos|fedora
-#   --office=365    Office 365 (default)
-#   --office=2016   Office 2016 (Fedora alternativo, requiere ISO manual)
+#   --office=365    Office 365 (default, no disponible en Fedora)
+#   --office=2016   Office 2016 (solo Fedora, requiere ISO manual)
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -135,15 +135,13 @@ case "$FAMILY:$OFFICE_VER" in
     DL_SIZE_MSG="~2.3 GB de assets + ~1 GB WineCX CachyOS build"
     SYS_CHANGES="pacman, /opt/winecx (compile-time make install), /usr/share/applications"
     ;;
-  fedora:365)
-    INSTALLER_FILE="instalar-office365-winecx-fedora.sh"
-    DL_SIZE_MSG="~2.3 GB de assets + ~225 MB winecx.deb (CrossOver-Wine)"
-    SYS_CHANGES="dnf, /opt/winecx, /usr/share/applications, RPM Fusion"
-    ;;
   fedora:2016)
     INSTALLER_FILE="instalar-office2016-fedora.sh"
     DL_SIZE_MSG="~432 MB Wine Fedora + ~367 MB requerimientos. ISO Office 2016 + Activador deben estar en \$HOME/Descargas"
     SYS_CHANGES="dnf (muchas -devel), /opt/winecx, /opt/wine/launchers, /usr/share/applications, RPM Fusion, ~/.office2016 prefix"
+    ;;
+  fedora:*)
+    die "Office 365 no está disponible en Fedora. Usa --office=2016 para Fedora."
     ;;
   *:*)
     die "Combinación no soportada: family=$FAMILY office=$OFFICE_VER. Office 2016 solo disponible en --family=fedora."
@@ -253,8 +251,7 @@ fi
 ok "Instalación completa. Busca 'Word 365', 'Excel 365', etc. en tu menú de aplicaciones."
 echo
 case "$FAMILY:$OFFICE_VER" in
-  debian:*)        echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
-  arch:*|cachyos:*) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
-  fedora:365)      echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-fedora.sh | bash" ;;
-  fedora:2016)     echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-office2016-fedora.sh | bash" ;;
+   debian:*)        echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall.sh | bash" ;;
+   arch:*|cachyos:*) echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-arch.sh | bash" ;;
+   fedora:*)        echo "Desinstalar: curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/scripts/uninstall-office2016-fedora.sh | bash" ;;
 esac

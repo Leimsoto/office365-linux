@@ -1,6 +1,6 @@
 # Microsoft Office 365 en Linux (WineCX)
 
-Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Outlook, Access, Publisher) sobre **WineCX** para distros basadas en **Debian/Ubuntu**, **Arch/Artix** y **Fedora/RHEL**.
+Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Outlook, Access, Publisher) sobre **WineCX** para distros basadas en **Debian/Ubuntu**, **Arch/Artix**. Para **Fedora/RHEL** se instala **Office 2016** (no Office 365).
 
 > Inspirado en la guía de [Formateando](https://www.youtube.com/@formateando). Empaquetado y automatizado para la comunidad.
 
@@ -37,7 +37,7 @@ Flags disponibles:
 | `--tag=vX.Y.Z`    | Usar un release concreto en lugar del más reciente fijado |
 | `--no-verify`     | Omitir verificación SHA256 (no recomendado) |
 | `--family=auto\|debian\|arch\|cachyos\|fedora` | Forzar familia de distro (default: auto-detecta) |
-| `--office=365\|2016` | Versión de Office (default: 365). Office 2016 solo en Fedora — requiere ISO+Activador manual |
+| `--office=365\|2016` | Versión de Office (default: 365 para Debian/Arch, 2016 para Fedora) |
 
 ---
 
@@ -65,7 +65,7 @@ Al terminar verás **Word 365**, **Excel 365**, **PowerPoint 365**, **Outlook 36
 
 ## Requisitos
 
-- Distro **basada en Debian/Ubuntu**, **Arch/Artix** o **Fedora/RHEL** (probado en Debian 13 Trixie, Artix Linux runit, CachyOS; compatible con Manjaro, EndeavourOS, Garuda, ArcoLinux, Fedora 41+, RHEL 9+, Rocky, AlmaLinux, Nobara, Ultramarine, Bazzite).
+- Distro **basada en Debian/Ubuntu**, **Arch/Artix** (Office 365) o **Fedora/RHEL** (Office 2016) (probado en Debian 13 Trixie, Artix Linux runit, CachyOS; compatible con Manjaro, EndeavourOS, Garuda, ArcoLinux, Fedora 41+, RHEL 9+, Rocky, AlmaLinux, Nobara, Ultramarine, Bazzite).
 - **5 GB de espacio libre** (2.3 GB descarga + 2.5 GB instalado).
 - **Arquitectura x86_64** con soporte `multiarch i386`.
 - **Conexión a internet**, `sudo` y `curl`.
@@ -219,7 +219,7 @@ Probado en:
 - **Debian 13 (Trixie)** ✅ verificado end-to-end (v1.0.1)
 - **Artix Linux (runit)** ✅ verificado end-to-end (v1.1.0)
 - **CachyOS** ✅ verificado end-to-end con build nativo (v1.3.0)
-- **Fedora** ⚠️ soporte experimental: Office 365 (v1.2.0) o Office 2016 alternativo (v1.3.0)
+- **Fedora** ✅ soporte completo: Office 2016 (v1.3.0) — Office 365 NO disponible en Fedora
 - Arch / Manjaro / EndeavourOS / Garuda (compatible vía router, mismo path Arch)
 - RHEL / Rocky / AlmaLinux / Nobara / Ultramarine / Bazzite (compatible vía router, mismo path Fedora)
 - Debian 12 (Bookworm)
