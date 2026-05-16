@@ -13,6 +13,7 @@ Instalador automático de **Microsoft Office 365** (Word, Excel, PowerPoint, Out
 ![Tested on Debian 13](https://img.shields.io/badge/Tested%20on-Debian%2013%20Trixie-success?logo=debian)
 ![Tested on Artix](https://img.shields.io/badge/Tested%20on-Artix%20runit-success?logo=artixlinux)
 ![Tested on CachyOS](https://img.shields.io/badge/Tested%20on-CachyOS-success?logo=archlinux)
+![Tested on MX Linux](https://img.shields.io/badge/Tested%20on-MX%20Linux%2023-success?logo=linux)
 
 ---
 
@@ -220,13 +221,13 @@ Probado en:
 - **Artix Linux (runit)** ✅ verificado end-to-end (v1.1.0)
 - **CachyOS** ✅ verificado end-to-end con build nativo (v1.3.0)
 - **Fedora** ✅ soporte completo: Office 2016 (v1.3.0) — Office 365 NO disponible en Fedora
+- **MX Linux 23** ✅ verificado tras parche stack GL/Vulkan i386 (v1.4.0)
 - Arch / Manjaro / EndeavourOS / Garuda (compatible vía router, mismo path Arch)
 - RHEL / Rocky / AlmaLinux / Nobara / Ultramarine / Bazzite (compatible vía router, mismo path Fedora)
 - Debian 12 (Bookworm)
 - Ubuntu 22.04 / 24.04 LTS
 - Linux Mint 21 / 22
 - Pop!_OS 22.04
-- MX Linux 23
 
 
 
