@@ -91,14 +91,17 @@ if [ "$ID" = "artix" ]; then
     fi
     if [ "$NEEDS_REWRITE" = "1" ]; then
       echo ">> Reparando bloques [multilib]/[extra] mal configurados"
+      # mktemp evita race condition con nombres predecibles en /tmp.
+      PACMAN_TMP="$(mktemp /tmp/pacman.conf.XXXXXX)"
       sudo awk '
         BEGIN { skip = 0 }
         /^\[multilib\]/ { skip = 1; next }
         /^\[extra\]/    { skip = 1; next }
         /^\[/           { skip = 0 }
         !skip           { print }
-      ' /etc/pacman.conf > /tmp/pacman.conf.new
-      sudo mv /tmp/pacman.conf.new /etc/pacman.conf
+      ' /etc/pacman.conf > "$PACMAN_TMP"
+      sudo install -m 0644 -o root -g root "$PACMAN_TMP" /etc/pacman.conf
+      rm -f "$PACMAN_TMP"
     fi
   fi
 
@@ -236,7 +239,8 @@ if [ "${CACHY_NATIVE_MODE:-0}" = "1" ] || [ -n "${CACHY_USE_NATIVE:-}" ]; then
     # Verify SHA256
     if echo "$NATIVE_ZIP_SHA  $NATIVE_ZIP" | sha256sum -c --status 2>/dev/null; then
       log "Extrayendo native build..."
-      rm -rf /opt/winecx
+      # /opt/winecx puede existir de un install previo con owner root:root.
+      sudo rm -rf /opt/winecx
       unzip -q -o "$NATIVE_ZIP" -d /tmp/winecx-native
       
       # Check for build64/build32 directories (make install artifacts)
@@ -368,7 +372,8 @@ if [[ "$WINE_VER" == *"FAILED"* ]] || [[ "$WINE_VER" == *"error"* ]] || [[ "$WIN
     
     if [ -n "$FALLBACK_ZIP" ]; then
       log "Instalando WineCX native build (fallback)..."
-      rm -rf /opt/winecx
+      # /opt/winecx existe de la instalación .deb fallida con owner root:root.
+      sudo rm -rf /opt/winecx
       unzip -q -o "$WORKDIR/$FALLBACK_ZIP" -d /tmp/winecx-native
       sudo mv /tmp/winecx-native/winecx /opt/ 2>/dev/null || \
         sudo mv /tmp/winecx-native/wine /opt/winecx 2>/dev/null || \

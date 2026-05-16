@@ -228,7 +228,7 @@ Probado en:
 - Pop!_OS 22.04
 - MX Linux 23
 
----
+
 
 ## Contribuidores
 

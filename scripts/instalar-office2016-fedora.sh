@@ -209,6 +209,22 @@ WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
 WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
   "HKLM\\Software\\Wine\\Mono"  /v Version /t REG_SZ /d "9.4.0"  /f 2>/dev/null
 
+# DllOverride winscard: osppcext.dll (Office Software Protection Platform) hace
+# import_dll de WinSCard.dll al arrancar Word/Excel. Sin el override explícito
+# Wine devuelve "Library not found" y la app cae con 0xc06d007e antes de pintar
+# la UI. Si winscard.dll está en /opt/winecx forzamos builtin; si no, vacío
+# (disabled) para que Office arranque aunque OSPP no pueda validar tokens HW.
+if [ -f /opt/winecx/lib/wine/x86_64-windows/winscard.dll ] || \
+   [ -f /opt/winecx/lib/wine/i386-windows/winscard.dll ]; then
+  WS_OVERRIDE="builtin"
+  echo ">> WinSCard DllOverride: builtin (winscard.dll presente en WineCX)"
+else
+  WS_OVERRIDE=""
+  echo "[WARN] winscard.dll no encontrado en /opt/winecx — Office arrancará pero activación hardware-bound no funcionará"
+fi
+WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
+  "HKCU\\Software\\Wine\\DllOverrides" /v winscard /t REG_SZ /d "$WS_OVERRIDE" /f 2>/dev/null || true
+
 echo ">> Aplicando correcciones DirectX/Direct2D"
 WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
   "HKCU\\Software\\Wine\\Direct2D" /v max_version_factory /t REG_DWORD /d 0 /f 2>/dev/null
@@ -216,11 +232,18 @@ WINEPREFIX="$PREFIX" /opt/winecx/bin/wine reg add \
   "HKCU\\Software\\Wine\\Direct3D" /v MaxVersionGL /t REG_DWORD /d 0x30002 /f 2>/dev/null
 
 echo ">> Inyectando DLL OSPP (necesario para activador)"
-OSPP_DEST="$PREFIX/drive_c/Program Files (x86)/Common Files/Microsoft Shared/OfficeSoftwareProtectionPlatform"
-mkdir -p "$OSPP_DEST"
-cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"OSPPC.DLL "$OSPP_DEST/" 2>/dev/null || true
-cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"OSPPCEXT.DLL "$OSPP_DEST/" 2>/dev/null || true
-cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"sppcs.dll "$OSPP_DEST/" 2>/dev/null || true
+# Office 2016 setup.exe genera el árbol bajo "Program Files (x86)\Common Files\..."
+# pero el linker de osppcext.dll resuelve por NombreBaseDLL en el orden de búsqueda
+# de Windows (mismo dir, System32, etc.). Copiamos a ambas rutas Program Files y
+# Program Files (x86) por si el setup creó la 64-bit en runs previos.
+OSPP_DEST_X86="$PREFIX/drive_c/Program Files (x86)/Common Files/Microsoft Shared/OfficeSoftwareProtectionPlatform"
+OSPP_DEST_X64="$PREFIX/drive_c/Program Files/Common Files/Microsoft Shared/OfficeSoftwareProtectionPlatform"
+mkdir -p "$OSPP_DEST_X86" "$OSPP_DEST_X64"
+for dest in "$OSPP_DEST_X86" "$OSPP_DEST_X64"; do
+  cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"OSPPC.DLL    "$dest/" 2>/dev/null || true
+  cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"OSPPCEXT.DLL "$dest/" 2>/dev/null || true
+  cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"sppcs.dll    "$dest/" 2>/dev/null || true
+done
 cp "$REQ_DIR/OfficeSoftwareProtectionPlatform/"sppcs.dll \
    "$PREFIX/drive_c/Program Files (x86)/Microsoft Office/Office16/" 2>/dev/null || true
 
@@ -272,6 +295,8 @@ create_launcher2016() {
   local name="$1" exe="$2"
   sudo tee "/opt/wine/launchers/${name}.sh" > /dev/null <<EOF
 #!/bin/bash
+# LD_LIBRARY_PATH defensivo: WineCX Fedora build puede no tener rpath bakeado.
+export LD_LIBRARY_PATH="/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine:\$LD_LIBRARY_PATH"
 export WINEPREFIX="\$HOME/.office2016"
 export PATH="/opt/winecx/bin:\$PATH"
 export LANG=C.UTF-8
