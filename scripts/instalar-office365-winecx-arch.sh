@@ -9,6 +9,18 @@
 
 set -euo pipefail
 
+# Helpers (log/ok/warn/die). Definidos aquí porque este script se ejecuta en un
+# bash hijo desde install.sh y no hereda las funciones del padre. También
+# permite ejecución standalone desde $HOME/Descargas.
+c_red() { printf '\033[1;31m%s\033[0m' "$*"; }
+c_grn() { printf '\033[1;32m%s\033[0m' "$*"; }
+c_ylw() { printf '\033[1;33m%s\033[0m' "$*"; }
+c_blu() { printf '\033[1;34m%s\033[0m' "$*"; }
+log()  { echo "$(c_blu '[INFO]')  $*"; }
+ok()   { echo "$(c_grn '[ OK ]')  $*"; }
+warn() { echo "$(c_ylw '[WARN]')  $*"; }
+die()  { echo "$(c_red '[FAIL]')  $*" >&2; exit 1; }
+
 echo "==============================================="
 echo "  Office 365 - WineCX (Arch / Artix / Manjaro)"
 echo "==============================================="

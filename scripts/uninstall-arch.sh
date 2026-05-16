@@ -2,6 +2,16 @@
 # Desinstalador limpio Office 365 WineCX — Arch/Artix/Manjaro/CachyOS
 set -e
 
+# Helpers (log/ok/warn/die). Necesarios para ejecución standalone vía curl|bash.
+c_red() { printf '\033[1;31m%s\033[0m' "$*"; }
+c_grn() { printf '\033[1;32m%s\033[0m' "$*"; }
+c_ylw() { printf '\033[1;33m%s\033[0m' "$*"; }
+c_blu() { printf '\033[1;34m%s\033[0m' "$*"; }
+log()  { echo "$(c_blu '[INFO]')  $*"; }
+ok()   { echo "$(c_grn '[ OK ]')  $*"; }
+warn() { echo "$(c_ylw '[WARN]')  $*"; }
+die()  { echo "$(c_red '[FAIL]')  $*" >&2; exit 1; }
+
 PREFIX="$HOME/.Microsoft_Office_365"
 WINECX="/opt/winecx"
 APPS_DIR="/usr/share/applications"
@@ -20,7 +30,7 @@ if [ -d "/opt/winecx/build64" ] || [ -d "/opt/winecx/build32" ]; then
   WAS_NATIVE=1
   log "Detected native build installation"
 elif [ -f "/opt/winecx/bin/wine" ] && \
-     (file "/opt/winecx/bin/wine" 2>/dev/null | grep -q "ELF.*64-bit"; then
+     file "/opt/winecx/bin/wine" 2>/dev/null | grep -q "ELF.*64-bit"; then
   # Check if it has the bundle libs (indicative of .deb installation)
   if [ -d "/opt/winecx/lib" ] && [ -d "/opt/winecx/lib32" ]; then
     # Could be either .deb or native, check for make install artifacts
@@ -68,8 +78,9 @@ sudo rm -rf "$FONTS_DIR"
 
 # Symlinks en ~/Descargas
 rm -f "$DESCARGAS/MSO365.zip" "$DESCARGAS/MSO365" "$DESCARGAS/winecx.deb" \
-      "$DESCARGAS/instalar-office365-winecx.sh" "$DESCARGAS/instalar-office365-winecx-arch.sh" \
-      rm -f "$DESCARGAS/instalar-office2016-fedora.sh"
+      "$DESCARGAS/instalar-office365-winecx.sh" \
+      "$DESCARGAS/instalar-office365-winecx-arch.sh" \
+      "$DESCARGAS/instalar-office2016-fedora.sh" \
       "$DESCARGAS/arch-winecx-libs.tar.zst"
 
 # Cache descarga

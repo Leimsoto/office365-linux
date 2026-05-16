@@ -10,8 +10,12 @@
 #   --tag=vX.Y.Z    Pin a specific release tag (default: v1.0.0 for assets)
 #   --no-verify     Skip SHA256 verification (NOT recommended)
 #   --family=auto   Force distro family: auto|debian|arch|manjaro|cachyos|fedora
-#   --office=365    Office 365 (default, not available on Fedora)
-#   --office=2016   Office 2016 (Fedora only, requires manual ISO)
+#   --office=365    Office 365 (default on Debian/Arch; NOT supported on Fedora)
+#   --office=2016   Office 2016 (auto-selected on Fedora; requires manual ISO)
+#
+# Fedora behaviour: when --office is not passed, Office 2016 is auto-selected
+# (Office 365 Click-to-Run no funciona en Fedora). Pasar --office=365 en Fedora
+# falla con mensaje claro.
 #
 # CachyOS special: when detected, shows a switch menu with 2 options:
 #   Option 1 (DEFAULT/RECOMMENDED): Debian .deb (most compatible)
@@ -61,6 +65,7 @@ TAG="$DEFAULT_TAG"
 DO_VERIFY=1
 FAMILY_OVERRIDE="auto"
 OFFICE_VER="365"
+OFFICE_VER_EXPLICIT=0
 CACHY_CHOICE=""  # Will be set by CachyOS menu
 
 for arg in "$@"; do
@@ -70,7 +75,7 @@ for arg in "$@"; do
     --no-verify)     DO_VERIFY=0 ;;
     --tag=*)         TAG="${arg#--tag=}" ;;
     --family=*)      FAMILY_OVERRIDE="${arg#--family=}" ;;
-    --office=*)      OFFICE_VER="${arg#--office=}" ;;
+    --office=*)      OFFICE_VER="${arg#--office=}"; OFFICE_VER_EXPLICIT=1 ;;
     -h|--help)
       sed -n '2,16p' "$0"
       exit 0
@@ -142,6 +147,14 @@ case "$FAMILY" in
   fedora)  ok "Distro: $PRETTY_NAME (familia: Fedora/RHEL)" ;;
   *)       die "Distro no soportada: $PRETTY_NAME. Forzar con --family=debian|arch|manjaro|cachyos|fedora." ;;
 esac
+
+# Fedora no soporta Office 365 (Click-to-Run no funciona). Si el usuario no
+# pasó --office explícitamente, auto-cambiar a 2016. Si pasó --office=365 a
+# propósito, fallar más abajo con mensaje claro.
+if [ "$FAMILY" = "fedora" ] && [ "$OFFICE_VER_EXPLICIT" = "0" ]; then
+  OFFICE_VER="2016"
+  log "Fedora detectada — usando Office 2016 (Office 365 no disponible en Fedora)"
+fi
 
 # ----- CachyOS switch menu -----
 if [ "$FAMILY" = "cachyos" ] && [ "$ASSUME_YES" = "0" ]; then
@@ -215,7 +228,10 @@ case "$FAMILY:$OFFICE_VER" in
     SYS_CHANGES="dnf (muchas -devel), /opt/winecx, /opt/wine/launchers, /usr/share/applications, RPM Fusion, ~/.office2016 prefix"
     ;;
   fedora:*)
-    die "Office 365 no está disponible en Fedora. Usa --office=2016 para Fedora."
+    die "Office 365 no está disponible en Fedora (Click-to-Run no funciona).
+       Para instalar Office 2016 en Fedora usa:
+         curl -fsSL https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/install.sh | bash
+       (sin --office=365). El script auto-selecciona Office 2016 en Fedora."
     ;;
   *)
     die "Combinación no soportada: family=$FAMILY office=$OFFICE_VER. Office 2016 solo disponible en --family=fedora."
