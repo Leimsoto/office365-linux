@@ -82,47 +82,35 @@ if ! command -v winetricks >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------
-# 4) Extraer winecx.deb a /opt/winecx (CrossOver-Wine 24)
+# 4) Instalar WineCX Fedora (Wine 10 vanilla, compilado en Fedora 42)
 # ---------------------------------------------------------
-echo ">> Extrayendo winecx.deb (CrossOver-Wine 24.0.7)"
-[ -f "winecx.deb" ] || { echo "ERROR: winecx.deb falta en $(pwd)" >&2; exit 1; }
+# Nota: la zip Fedora trae wine-10.0 vanilla (no CrossOver-Wine 24). Office
+# 365 Click-to-Run puede dar 0x6d3-0x0 en algunas instalaciones porque
+# vanilla wine carece de los patches CrossOver. Si C2R falla, prueba el
+# path Office 2016 (--office=2016) que NO usa Click-to-Run.
+WINECX_ZIP="$WORKDIR/winecx-fedora.zip"
+WINECX_SHA="4835f40619af3d44b49e313d5eabfdb3442c15025d3d79d62760c9532bc58656"
 
-# Limpiar instalación previa
+if [ ! -f "$WINECX_ZIP" ] || ! echo "$WINECX_SHA  $WINECX_ZIP" | sha256sum -c --status; then
+  echo ">> Descargando WineCX Fedora (~432 MB)"
+  curl -fL --retry 5 --retry-delay 3 --progress-bar -o "$WINECX_ZIP" \
+    "https://github.com/Leimsoto/office365-linux/releases/download/v1.0.0/winecx-fedora.zip"
+  echo "$WINECX_SHA  $WINECX_ZIP" | sha256sum -c --status || \
+    { echo "ERROR: SHA256 mismatch winecx-fedora.zip" >&2; exit 1; }
+fi
+
+echo ">> Extrayendo WineCX Fedora a /opt/winecx"
 WINEPREFIX="$HOME/.Microsoft_Office_365" /opt/winecx/bin/wineserver -k 2>/dev/null || true
 sudo rm -rf /opt/winecx
-
-DEB_WORK="$(mktemp -d)"
-pushd "$DEB_WORK" >/dev/null
-cp "$WORKDIR/MSO365/winecx.deb" .
-ar x winecx.deb
-
-DATA_TAR=$(ls data.tar.* 2>/dev/null | head -1)
-[ -n "$DATA_TAR" ] || { echo "ERROR: no se encontró data.tar.* dentro de .deb" >&2; exit 1; }
-
-sudo mkdir -p /opt/winecx
-case "$DATA_TAR" in
-  *.zst) sudo tar --zstd -xf "$DATA_TAR" -C /opt/winecx ;;
-  *.xz)  sudo tar -xJf "$DATA_TAR" -C /opt/winecx ;;
-  *.gz)  sudo tar -xzf "$DATA_TAR" -C /opt/winecx ;;
-  *)     sudo tar -xf "$DATA_TAR" -C /opt/winecx ;;
-esac
-
-# Aplanar si quedó anidado
-if [ -d /opt/winecx/opt/winecx ]; then
-  sudo cp -a /opt/winecx/opt/winecx/. /opt/winecx/
-  sudo rm -rf /opt/winecx/opt
-fi
-popd >/dev/null
-rm -rf "$DEB_WORK"
-
+unzip -q -o "$WINECX_ZIP" -d /tmp/winecx-fedora-extract
+sudo mv /tmp/winecx-fedora-extract/winecx /opt/
 sudo chown -R root:root /opt/winecx
 sudo chmod -R 755 /opt/winecx
+rm -rf /tmp/winecx-fedora-extract
 
 WINE_VER=$(/opt/winecx/bin/wine --version 2>&1 || echo "FAILED")
-echo ">> WineCX: $WINE_VER"
+echo ">> Wine: $WINE_VER"
 [[ "$WINE_VER" == "FAILED" ]] && { echo "ERROR: WineCX no arranca en Fedora" >&2; exit 1; }
-[[ "$WINE_VER" != crossover-wine-* ]] && \
-  echo "[WARN] Esperado crossover-wine-*, obtuvo $WINE_VER. Office 365 C2R puede fallar."
 
 # ---------------------------------------------------------
 # 5) Copiar prefix
