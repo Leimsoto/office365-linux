@@ -584,6 +584,48 @@ reinstall() {
 }
 
 # ============================================================
+# 14) Desactivar cloud fonts (fix desplegable de fuentes congelado)
+# ============================================================
+disable_cloud_fonts() {
+  [ -d "$PREFIX" ] || die "Prefix $PREFIX no existe"
+  LDP="LD_LIBRARY_PATH=/opt/winecx/lib:/opt/winecx/lib32:/opt/winecx/lib/wine"
+  WINE=/opt/winecx/bin/wine
+
+  cat <<'EOF'
+  El desplegable de fuentes se congela por las "cloud fonts":
+  el gallery de Office se bloquea en NtGdiSelectFont al pintarlas
+  (probado en Word y Excel con el mismo backtrace).
+  Este fix desactiva las experiencias conectadas que descargan
+  contenido en línea (incluye cloud fonts). Tus documentos y las
+  fuentes instaladas siguen funcionando igual.
+EOF
+  warn "Se cerrará Word/Excel para aplicar el cambio."
+  read -r -p "¿Continuar? [y/N]: " ans </dev/tty
+  [[ ! "$ans" =~ ^[Yy]$ ]] && { log "Cancelado"; return; }
+
+  log "Desactivando descarga de contenido en línea (cloud fonts)..."
+  env $LDP WINEPREFIX="$PREFIX" $WINE reg add \
+    "HKCU\\Software\\Policies\\Microsoft\\Office\\16.0\\common\\privacy" /v DownloadContentDisabled /t REG_DWORD /d 2 /f 2>/dev/null || \
+    die "No se pudo escribir el registro"
+
+  log "Verificando valor..."
+  if env $LDP WINEPREFIX="$PREFIX" $WINE reg query \
+    "HKCU\\Software\\Policies\\Microsoft\\Office\\16.0\\common\\privacy" /v DownloadContentDisabled 2>/dev/null | grep -qi 'DownloadContentDisabled'; then
+    ok "Valor verificado en el registro"
+  else
+    warn "No se pudo verificar (re-lanza y prueba el desplegable igual)"
+  fi
+
+  log "Apagado graceful para flushear el registro a disco (kill -9 lo perdería)..."
+  env $LDP WINEPREFIX="$PREFIX" $WINE wineboot -e 2>/dev/null || true
+  env $LDP WINEPREFIX="$PREFIX" /opt/winecx/bin/wineserver -k 2>/dev/null || true
+
+  ok "Listo. Re-lanza Word/Excel: sin iconos de nube, el desplegable ya no se congela."
+  warn "Efecto colateral: también desactiva plantillas en línea y otras funciones conectadas."
+  log "Revertir: reg delete 'HKCU\\Software\\Policies\\Microsoft\\Office\\16.0\\common\\privacy' /v DownloadContentDisabled /f"
+}
+
+# ============================================================
 # MENU
 # ============================================================
 menu() {
@@ -606,8 +648,9 @@ menu() {
  10) Activar Wine virtual desktop (fix ventana transparente KDE/KWin/Wayland)
  11) Desactivar Wine virtual desktop (volver a ventana nativa)
  12) Reparar pantalla de inicio de sesión en blanco (Desactivar WAM / Forzar ADAL)
- 13) Instalar paquete de idioma adicional (zh-cn, en-us, pt-br, etc.)
-  q) Salir
+  13) Instalar paquete de idioma adicional (zh-cn, en-us, pt-br, etc.)
+  14) Desactivar cloud fonts (fix desplegable de fuentes congelado)
+   q) Salir
 
 EOF
   read -r -p "Opción: " choice </dev/tty
@@ -625,6 +668,7 @@ EOF
     11) disable_virtual_desktop ;;
     12) fix_blank_login ;;
     13) install_language_pack ;;
+    14) disable_cloud_fonts ;;
     q|Q) exit 0 ;;
     *) warn "Opción inválida" ;;
   esac
@@ -646,7 +690,8 @@ if [ $# -gt 0 ]; then
     11) disable_virtual_desktop ;;
     12) fix_blank_login ;;
     13) install_language_pack ;;
-    *) die "Opción inválida: $1 (válidas: 1-13)" ;;
+    14) disable_cloud_fonts ;;
+    *) die "Opción inválida: $1 (válidas: 1-14)" ;;
   esac
   exit 0
 fi
